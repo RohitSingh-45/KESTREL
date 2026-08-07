@@ -1,6 +1,6 @@
 # Kestrel
 
-Autonomous AI Security Persona for the HANUMAN hackathon project.
+Autonomous AI Security Persona for the  hackathon project.
 
 Module 1 provides the production-ready application scaffold. Module 2 adds the evaluator-facing Agent API (`POST /api/agent/init`, `GET /api/agent/feed`) with repository/service layers. LLM integration, research, scheduler, and the generation pipeline are intentionally not included yet.
 
