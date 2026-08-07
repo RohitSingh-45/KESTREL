@@ -61,6 +61,12 @@ class AgentRepository:
         result = await self._session.execute(select(Agent).where(Agent.status == status))
         return list(result.scalars().all())
 
+    async def list_all(self, *, limit: int = 50) -> list[Agent]:
+        result = await self._session.execute(
+            select(Agent).order_by(Agent.created_at.desc()).limit(max(1, limit))
+        )
+        return list(result.scalars().all())
+
     async def record_cycle_success(
         self,
         agent_id: str,

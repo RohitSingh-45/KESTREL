@@ -137,6 +137,27 @@ data/                # SQLite volume (gitignored db files)
 | 15 — Controlled autonomous learning | Implemented |
 | 16 — Autonomous decision / orchestration | Implemented |
 | 17 — Observability / explainability / audit | Implemented |
+| 18 — Operator dashboard UI | Implemented |
+
+## Operator dashboard (Module 18)
+
+```bash
+# Dev UI (proxies /api to FastAPI on :8000)
+cd frontend
+npm install
+npm run dev
+
+# Or build and serve from FastAPI
+cd frontend && npm run build
+uvicorn app.main:app --reload
+# open http://127.0.0.1:8000/
+```
+
+Read-only dashboard APIs:
+- `GET /api/dashboard/agents`
+- `GET /api/dashboard/state?agentId=...`
+
+These never trigger research, LLM, generation, or publishing.
 
 ## Evaluator API (Module 2)
 
