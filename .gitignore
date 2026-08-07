@@ -56,3 +56,20 @@ env/
 *.local
 .temp/
 tmp/
+
+# Virtual environments / packaging
+.venv/
+venv/
+*.egg-info/
+kestrel.egg-info/
+.eggs/
+.pytest_cache/
+dist/
+build/
+
+# SQLite database files (keep data/ directory via .gitkeep)
+data/*.db
+data/*.db-wal
+data/*.db-shm
+tests/test_kestrel.db
+tests/test_kestrel.db-*
