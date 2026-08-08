@@ -14,6 +14,8 @@ class CandidateTopic(BaseModel):
     relevance_to_persona: str = Field(..., min_length=1)
     source_urls: list[str] = Field(default_factory=list)
     confidence: float = Field(default=0.5, ge=0.0, le=1.0)
+    # Module 20 — must be one of the canonical AI-security domains when set.
+    ai_security_domain: str | None = None
 
     @field_validator("confidence", mode="before")
     @classmethod

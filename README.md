@@ -163,6 +163,36 @@ data/                # SQLite volume (gitignored db files)
 | 16 — Autonomous decision / orchestration | Implemented |
 | 17 — Observability / explainability / audit | Implemented |
 | 18 — Operator dashboard UI + production web deploy | Implemented |
+| 19 — End-to-end autonomous cycle completion | Requires live `OPENAI_API_KEY` |
+| 20 — AI-security domain focus + filtering | Implemented |
+
+### AI-security focus (Module 20)
+
+After research, Kestrel runs a deterministic **AI-Security Filter** before candidates:
+
+- Accepts only findings in: `prompt_injection`, `jailbreak`, `data_leakage`, `model_poisoning`, `ai_vulnerability`, `ai_supply_chain`
+- Rejects generic cyber (phishing, ransomware, DDoS, password attacks, etc.) unless a direct AI-security domain match exists
+- Never invents CVEs, URLs, severity, or evidence
+- If nothing remains: cycle skips with `No relevant AI-security finding discovered.`
+- Selected topics persist `topics.ai_security_domain` (nullable migration; existing rows kept)
+
+Toggle: `AI_SECURITY_FILTER_ENABLED=true` (default). Scoring includes `ai_security_relevance` (weight `SCORE_WEIGHT_AI_SECURITY=0.25`).
+
+### One complete cycle (Module 19)
+
+A full Research→…→Evaluate cycle **requires a real OpenAI key** on the API process. Without it, cycles skip at Candidates with `reason=llm_unavailable` (truthful — not faked).
+
+```powershell
+# Create .env from template, then set your key (never commit .env)
+copy .env.example .env
+# Edit .env: OPENAI_API_KEY=sk-...
+
+# Restart API so lifecycle picks up the key
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+
+# In another shell — init + wait for one real published cycle
+python scripts/run_one_cycle.py --base-url http://127.0.0.1:8000 --wait-seconds 180
+```
 
 ## Operator dashboard (Module 18)
 

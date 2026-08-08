@@ -16,6 +16,7 @@ from app.db.repositories.topics import TopicRepository
 from app.db.session import close_db, get_session_factory, init_db
 from app.orchestration.locks import AgentLockManager, utc_now
 from app.services.candidates import CandidateGenerationService
+from app.services.contradictions.detector import ContradictionLLMResponse
 from app.services.debate import DebateLLMResponse
 from app.services.final_post.models import GeneratedPost
 from app.services.generation_cycle import GenerationCycleService
@@ -59,10 +60,10 @@ class _ThreeConnector:
                 content_hash="c",
             ),
             ResearchItem(
-                title="AI notebook tips",
-                summary="Productivity.",
+                title="LLM data leakage via training extraction",
+                summary="Sensitive data leakage from language models.",
                 url="https://example.com/d",
-                source_name="example",
+                source_name="research",
                 published_at=now,
                 discovered_at=now,
                 content_hash="d",
@@ -99,12 +100,13 @@ def _candidates() -> CandidateTopicList:
                     "confidence": 0.88,
                 },
                 {
-                    "title": "Generic AI notebook tips",
-                    "angle": "Productivity",
-                    "why_now": "Evergreen",
-                    "relevance_to_persona": "None",
+                    "title": "LLM training data leakage risks",
+                    "angle": "Privacy",
+                    "why_now": "Extraction research",
+                    "relevance_to_persona": "AI Security privacy",
                     "source_urls": ["https://example.com/d"],
-                    "confidence": 0.1,
+                    "confidence": 0.4,
+                    "ai_security_domain": "data_leakage",
                 },
             ]
         }
@@ -172,6 +174,8 @@ class _DebateMockLLM:
                     ]
                 }
             )
+        if schema is ContradictionLLMResponse:
+            return ContradictionLLMResponse.model_validate({"contradictions": []})
         if schema is GeneratedPost:
             return GeneratedPost.model_validate(
                 {
@@ -215,6 +219,8 @@ class _PartialFailLLM:
             return _debate_ok("https://arxiv.org/abs/a")
         if schema is MemoryExtractionResponse:
             return MemoryExtractionResponse.model_validate({"memories": []})
+        if schema is ContradictionLLMResponse:
+            return ContradictionLLMResponse.model_validate({"contradictions": []})
         if schema is GeneratedPost:
             return GeneratedPost.model_validate(
                 {

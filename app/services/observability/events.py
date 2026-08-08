@@ -28,6 +28,9 @@ EVENT_PRIORITY: dict[str, int] = {
     "memory_updated": 38,
     "memory_retrieved": 35,
     "candidate_generated": 30,
+    "candidate_skipped": 55,
+    "candidate_failed": 70,
+    "ai_security_filter_completed": 28,
     "research_completed": 25,
     "research_started": 20,
 }

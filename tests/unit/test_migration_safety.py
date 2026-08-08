@@ -21,7 +21,7 @@ def test_alembic_heads_single_and_upgrade_path() -> None:
     script = ScriptDirectory.from_config(cfg)
     heads = script.get_heads()
     assert len(heads) == 1
-    assert heads[0] == "b7c8d9e0f1a2"
+    assert heads[0] == "c8d9e0f1a2b3"
 
 
 def test_alembic_upgrade_head_preserves_rows(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

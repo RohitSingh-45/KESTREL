@@ -19,6 +19,7 @@ from app.services.observability.sanitizer import sanitize_mapping
 
 PIPELINE_STAGES = (
     ("research", "Research"),
+    ("ai_security", "AI-Security Filter"),
     ("candidate", "Candidates"),
     ("selection", "Score"),
     ("debate", "Debate"),
@@ -116,7 +117,12 @@ class DashboardService:
         )
 
         live_status = self._live_status(agent.status, latest.status if latest else None)
-        llm_status = "ready" if settings.openai_api_key else "unavailable"
+        llm_status = self._llm_status(
+            settings.openai_api_key,
+            meta,
+            latest.status if latest else None,
+            latest.error if latest else None,
+        )
 
         return sanitize_mapping(
             {
@@ -177,6 +183,36 @@ class DashboardService:
             return "IDLE"
         return "ONLINE" if run_status in {"success", "skipped"} else "IDLE"
 
+    @staticmethod
+    def _llm_status(
+        api_key: str | None,
+        meta: dict[str, Any],
+        run_status: str | None,
+        run_error: str | None,
+    ) -> str:
+        """Truthful LLM badge: ready | unavailable | unstable."""
+        llm_meta = meta.get("llm") if isinstance(meta.get("llm"), dict) else {}
+        obs = meta.get("observability") if isinstance(meta.get("observability"), dict) else {}
+        cycle_reason = str(
+            llm_meta.get("reason")
+            or obs.get("cycle_reason")
+            or obs.get("final_reason")
+            or run_error
+            or ""
+        ).lower()
+        llm_meta_status = str(llm_meta.get("status") or "").lower()
+
+        if llm_meta_status == "unstable" or "llm_unstable" in cycle_reason:
+            return "unstable"
+        if not api_key:
+            return "unavailable"
+        if llm_meta_status == "unavailable" or "llm_unavailable" in cycle_reason:
+            # Key may have been removed mid-run, or lifecycle started without key.
+            return "unavailable"
+        if run_status == "failed" and "llm" in cycle_reason:
+            return "unstable"
+        return "ready"
+
     def _pipeline_nodes(
         self,
         meta: dict[str, Any],
@@ -187,6 +223,28 @@ class DashboardService:
         decision = meta.get("decision") if isinstance(meta.get("decision"), dict) else {}
         trace = list(decision.get("trace") or [])
         gates = {str(item.get("gate")): item for item in trace if isinstance(item, dict)}
+        cycle_reason = str(obs.get("cycle_reason") or obs.get("final_reason") or "").lower()
+        llm_blocked = cycle_reason in {"llm_unavailable", "llm_unstable"}
+
+        # Stages that require LLM (or depend on LLM outputs) after research.
+        llm_dependent = {
+            "candidate",
+            "selection",
+            "debate",
+            "memory",
+            "consistency",
+            "intelligence",
+            "adaptive",
+            "learning",
+            "generation",
+            "publishing",
+            "evaluation",
+        }
+        ai_filter_meta = (
+            meta.get("ai_security_filter")
+            if isinstance(meta.get("ai_security_filter"), dict)
+            else {}
+        )
 
         stage_hits: dict[str, dict[str, Any]] = {}
         for event in events:
@@ -201,15 +259,56 @@ class DashboardService:
             gate = gates.get(key) or gates.get(
                 "learning" if key == "learning" else key
             )
-            if key == "decision":
-                status = "done" if decision.get("final_action") else "waiting"
+            if key == "ai_security":
+                if event:
+                    estatus = str(event.get("status") or "")
+                    status = (
+                        "done"
+                        if estatus in {"ok", "info"}
+                        else ("skipped" if estatus == "skipped" else "blocked")
+                    )
+                    detail = {
+                        "action": event.get("action"),
+                        "reason": event.get("reason"),
+                        "eventType": event.get("event_type"),
+                    }
+                elif ai_filter_meta:
+                    accepted = int(ai_filter_meta.get("accepted_count") or 0)
+                    status = "done" if accepted > 0 else "skipped"
+                    detail = {
+                        "acceptedCount": accepted,
+                        "rejectedCount": ai_filter_meta.get("rejected_count"),
+                        "reason": ai_filter_meta.get("reason"),
+                    }
+                elif meta.get("research_count") and not llm_blocked:
+                    # Filter disabled or not recorded — treat as passed-through.
+                    status = "done"
+                    detail = {"status": "passthrough"}
+                else:
+                    status = "waiting"
+                    detail = {}
+            elif key == "decision":
+                action = str(decision.get("final_action") or "")
+                if action == "proceed" and not llm_blocked:
+                    status = "done"
+                elif action in {"skip", "stop"} or llm_blocked:
+                    status = "blocked" if llm_blocked or action == "stop" else "skipped"
+                elif action:
+                    status = "done"
+                else:
+                    status = "waiting"
                 detail = {
                     "action": decision.get("final_action"),
                     "reason": decision.get("reason"),
                 }
             elif key == "selection":
                 selected = meta.get("selected_ids") or []
-                status = "done" if selected else ("waiting" if not meta else "skipped")
+                if selected:
+                    status = "done"
+                elif llm_blocked or meta:
+                    status = "skipped"
+                else:
+                    status = "waiting"
                 detail = {"selectedCount": len(selected) if isinstance(selected, list) else 0}
             elif event:
                 estatus = str(event.get("status") or "")
@@ -226,6 +325,9 @@ class DashboardService:
                     "reason": event.get("reason"),
                     "eventType": event.get("event_type"),
                 }
+            elif llm_blocked and key in llm_dependent:
+                status = "skipped"
+                detail = {"reason": cycle_reason}
             elif gate:
                 action = str(gate.get("action") or "")
                 status = (
@@ -273,8 +375,11 @@ class DashboardService:
 
     @staticmethod
     def _stage_implied_done(key: str, meta: dict[str, Any]) -> bool:
+        ai_filter = meta.get("ai_security_filter") if isinstance(meta.get("ai_security_filter"), dict) else {}
         mapping = {
             "research": bool(meta.get("research_count")),
+            "ai_security": bool(ai_filter.get("accepted_count"))
+            or ai_filter.get("status") in {"ok", "disabled"},
             "candidate": bool(meta.get("candidate_count")),
             "selection": bool(meta.get("selected_ids")),
             "debate": bool(meta.get("debated_ids")),

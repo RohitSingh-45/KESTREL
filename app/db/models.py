@@ -124,6 +124,8 @@ class Topic(Base):
     )
     title: Mapped[str] = mapped_column(String(512), nullable=False)
     status: Mapped[str] = mapped_column(String(64), nullable=False)
+    # Module 20 — nullable so existing rows remain valid.
+    ai_security_domain: Mapped[str | None] = mapped_column(String(64), nullable=True)
     scores_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     debate_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     consistency_json: Mapped[str | None] = mapped_column(Text, nullable=True)

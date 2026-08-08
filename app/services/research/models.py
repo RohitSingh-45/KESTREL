@@ -19,6 +19,9 @@ class ResearchItem(BaseModel):
     author: str | None = None
     tags: list[str] = Field(default_factory=list)
     content_hash: str
+    # Module 20 — set by AISecurityFilter from real lexical evidence only.
+    ai_security_domain: str | None = None
+    ai_security_relevance: float | None = Field(default=None, ge=0.0, le=1.0)
 
     @field_validator("title", "url", "source_name", "content_hash")
     @classmethod

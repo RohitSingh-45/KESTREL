@@ -65,6 +65,7 @@ def test_score_bounds_and_weighted_final() -> None:
         "novelty": 1.0,
         "source_quality": 1.0,
         "evidence_quality": 1.0,
+        "ai_security_relevance": 1.0,
     }
     final = compute_final_score(dims, DEFAULT_WEIGHTS)
     assert final == pytest.approx(1.0)
@@ -77,14 +78,16 @@ def test_score_bounds_and_weighted_final() -> None:
         "novelty": 0.60,
         "source_quality": 0.50,
         "evidence_quality": 0.40,
+        "ai_security_relevance": 0.95,
     }
     expected = (
-        0.90 * 0.20
-        + 0.80 * 0.25
-        + 0.70 * 0.20
-        + 0.60 * 0.15
+        0.90 * 0.15
+        + 0.80 * 0.15
+        + 0.70 * 0.15
+        + 0.60 * 0.10
         + 0.50 * 0.10
         + 0.40 * 0.10
+        + 0.95 * 0.25
     )
     assert compute_final_score(dims2, DEFAULT_WEIGHTS) == pytest.approx(expected)
 

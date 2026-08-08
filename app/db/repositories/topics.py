@@ -29,12 +29,14 @@ class TopicRepository:
         consistency_json: str | None = None,
         embedding_json: str | None = None,
         decided_at: datetime | None = None,
+        ai_security_domain: str | None = None,
     ) -> Topic:
         topic = Topic(
             id=topic_id,
             agent_id=agent_id,
             title=title,
             status=status,
+            ai_security_domain=ai_security_domain,
             scores_json=scores_json,
             debate_json=debate_json,
             consistency_json=consistency_json,
@@ -75,6 +77,7 @@ class TopicRepository:
         debate_json: str | None = None,
         consistency_json: str | None = None,
         decided_at: datetime | None = None,
+        ai_security_domain: str | None = None,
     ) -> Topic | None:
         topic = await self.get_by_id(topic_id)
         if topic is None:
@@ -89,5 +92,7 @@ class TopicRepository:
             topic.consistency_json = consistency_json
         if decided_at is not None:
             topic.decided_at = decided_at
+        if ai_security_domain is not None:
+            topic.ai_security_domain = ai_security_domain
         await self._session.flush()
         return topic

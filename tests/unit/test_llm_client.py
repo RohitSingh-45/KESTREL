@@ -59,11 +59,29 @@ def test_source_grounding_filters_unknown_urls() -> None:
             confidence=0.2,
         ),
     ]
+    from datetime import datetime, timezone
+
+    from app.services.research.models import ResearchItem
+
+    research = [
+        ResearchItem(
+            title="Prompt injection advisory",
+            summary="LLM prompt injection in production agents",
+            url="https://example.com/real",
+            source_name="advisory",
+            discovered_at=datetime.now(timezone.utc),
+            content_hash="h1",
+            ai_security_domain="prompt_injection",
+            ai_security_relevance=0.9,
+        )
+    ]
     grounded = ground_candidates(
         candidates,
         {"https://example.com/real"},
         {"https://example.com/real": "https://example.com/real"},
+        research_items=research,
     )
     assert len(grounded) == 1
     assert grounded[0].title == "Good"
     assert grounded[0].source_urls == ["https://example.com/real"]
+    assert grounded[0].ai_security_domain == "prompt_injection"

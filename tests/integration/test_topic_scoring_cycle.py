@@ -18,6 +18,7 @@ from app.main import create_app
 from app.orchestration.locks import AgentLockManager, utc_now
 from app.services.candidates import CandidateGenerationService
 from app.services.generation_cycle import GenerationCycleService
+from app.services.contradictions.detector import ContradictionLLMResponse
 from app.services.debate import DebateLLMResponse
 from app.services.final_post.models import GeneratedPost
 from app.services.llm.base import CandidateTopicList
@@ -43,17 +44,17 @@ class _MultiFixtureConnector:
                 content_hash="h1",
             ),
             ResearchItem(
-                title="AI fashion influencer campaign",
-                summary="Marketing news.",
-                url="https://example.com/fashion",
-                source_name="example",
+                title="Model poisoning via tainted fine-tuning data",
+                summary="Data poisoning attack against LLM fine-tuning pipelines.",
+                url="https://arxiv.org/abs/sec-2",
+                source_name="arXiv",
                 published_at=now,
                 discovered_at=now,
                 content_hash="h2",
             ),
             ResearchItem(
                 title="Jailbreak defenses for enterprise LLMs",
-                summary="Security controls and monitoring.",
+                summary="Security controls and monitoring for jailbreak attacks.",
                 url="https://www.cisa.gov/ai-1",
                 source_name="CISA",
                 published_at=now,
@@ -61,10 +62,10 @@ class _MultiFixtureConnector:
                 content_hash="h3",
             ),
             ResearchItem(
-                title="Generic AI notebook tips",
-                summary="Productivity tips.",
-                url="https://example.com/tips",
-                source_name="example",
+                title="Training data extraction and LLM data leakage",
+                summary="Membership inference and sensitive data leakage from language models.",
+                url="https://example.com/leakage",
+                source_name="research",
                 published_at=now,
                 discovered_at=now,
                 content_hash="h4",
@@ -88,8 +89,10 @@ class _MultiMockLLM:
             url = "https://arxiv.org/abs/sec-1"
             if "https://www.cisa.gov/ai-1" in user_prompt:
                 url = "https://www.cisa.gov/ai-1"
-            elif "https://example.com/fashion" in user_prompt:
-                url = "https://example.com/fashion"
+            elif "https://arxiv.org/abs/sec-2" in user_prompt:
+                url = "https://arxiv.org/abs/sec-2"
+            elif "https://example.com/leakage" in user_prompt:
+                url = "https://example.com/leakage"
             return DebateLLMResponse.model_validate(
                 {
                     "for_argument": (
@@ -123,18 +126,31 @@ class _MultiMockLLM:
                     ]
                 }
             )
+        if schema is ContradictionLLMResponse:
+            return ContradictionLLMResponse.model_validate({"contradictions": []})
         if schema is GeneratedPost:
+            user_prompt = str(kwargs.get("user_prompt") or "")
+            url = "https://arxiv.org/abs/sec-1"
+            for candidate in (
+                "https://www.cisa.gov/ai-1",
+                "https://arxiv.org/abs/sec-2",
+                "https://example.com/leakage",
+                "https://arxiv.org/abs/sec-1",
+            ):
+                if candidate in user_prompt:
+                    url = candidate
+                    break
             return GeneratedPost.model_validate(
                 {
                     "text": (
-                        "A critical prompt-injection path in AI agents shows why "
+                        "A critical AI-security path in LLM agents shows why "
                         "defensive monitoring remains central to AI Security practice."
                     ),
                     "rationale": (
                         "Selected for AI Security relevance, recent evidence, and stronger "
                         "novelty than lower-ranked alternatives with weaker security fit."
                     ),
-                    "source_urls": ["https://arxiv.org/abs/sec-1"],
+                    "source_urls": [url],
                 }
             )
         return CandidateTopicList.model_validate(
@@ -157,20 +173,22 @@ class _MultiMockLLM:
                         "confidence": 0.85,
                     },
                     {
-                        "title": "AI fashion influencer campaign analysis",
-                        "angle": "Marketing",
-                        "why_now": "Viral campaign",
-                        "relevance_to_persona": "Weak",
-                        "source_urls": ["https://example.com/fashion"],
-                        "confidence": 0.2,
+                        "title": "Model poisoning in fine-tuning supply paths",
+                        "angle": "Training integrity",
+                        "why_now": "Poisoned dataset advisory",
+                        "relevance_to_persona": "AI Security model risk",
+                        "source_urls": ["https://arxiv.org/abs/sec-2"],
+                        "confidence": 0.55,
+                        "ai_security_domain": "model_poisoning",
                     },
                     {
-                        "title": "Generic AI notebook productivity tips",
-                        "angle": "Productivity",
-                        "why_now": "Evergreen tips",
-                        "relevance_to_persona": "None",
-                        "source_urls": ["https://example.com/tips"],
-                        "confidence": 0.1,
+                        "title": "LLM training data leakage risks",
+                        "angle": "Privacy",
+                        "why_now": "Extraction research",
+                        "relevance_to_persona": "AI Security privacy",
+                        "source_urls": ["https://example.com/leakage"],
+                        "confidence": 0.45,
+                        "ai_security_domain": "data_leakage",
                     },
                 ]
             }
@@ -235,6 +253,15 @@ async def test_scoring_cycle_selects_top_k_and_rejects_rest(engine: AsyncEngine)
                 "novelty",
                 "source_quality",
                 "evidence_quality",
+                "ai_security_relevance",
+            }
+            assert payload.get("ai_security_domain") in {
+                "prompt_injection",
+                "jailbreak",
+                "data_leakage",
+                "model_poisoning",
+                "ai_vulnerability",
+                "ai_supply_chain",
             }
 
         for topic in selected:

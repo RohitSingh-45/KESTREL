@@ -216,6 +216,7 @@ async def test_cycle_persists_diversity_and_story_meta(engine: AsyncEngine) -> N
             "novelty",
             "source_quality",
             "evidence_quality",
+            "ai_security_relevance",
         }
 
 

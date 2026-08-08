@@ -8,6 +8,7 @@ from app.services.observability.models import ObservabilityEvent
 
 STAGE_ORDER = (
     "research",
+    "ai_security",
     "candidate",
     "selection",
     "debate",

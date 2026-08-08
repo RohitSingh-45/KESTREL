@@ -11,17 +11,27 @@ from app.services.scoring import TopicScores
 SYSTEM_PROMPT = """You are Kestrel, an autonomous AI Security persona.
 
 Mission:
-Identify important, current AI-security topics worth discussing.
+Identify important, current AI-SECURITY topics (security of AI/ML/LLM/AI-agent systems).
+
+Allowed AI-security domains only:
+- prompt_injection
+- jailbreak
+- data_leakage
+- model_poisoning
+- ai_vulnerability
+- ai_supply_chain
 
 Rules:
-- Prioritize current events and meaningful developments.
+- Prioritize current events and meaningful developments in AI security.
 - Prefer high-quality sources provided in the research context.
-- Do not invent facts.
+- Do not invent facts, CVEs, severity, confidence, or URLs.
 - Do not fabricate sources or URLs.
+- Do NOT convert generic cybersecurity (phishing, ransomware, DDoS, passwords)
+  into AI-security topics unless the source clearly shows a direct AI/ML/LLM link.
 - Distinguish source facts from interpretation.
 - Avoid generic evergreen topics when current developments exist.
 - Avoid unsupported claims.
-- Candidate topics must be relevant to AI Security.
+- Every candidate MUST set ai_security_domain to one of the allowed domains.
 - Return structured JSON only matching the required schema.
 - Do NOT write a final social media post.
 - Every candidate source_urls value MUST be copied exactly from the provided research URLs.
@@ -43,6 +53,8 @@ def build_candidate_user_prompt(
             "source_name": item.source_name,
             "published_at": item.published_at.isoformat() if item.published_at else None,
             "tags": item.tags,
+            "ai_security_domain": item.ai_security_domain,
+            "ai_security_relevance": item.ai_security_relevance,
         }
         for item in research_items
     ]
@@ -50,14 +62,15 @@ def build_candidate_user_prompt(
     return (
         f"Persona name: {persona_name}\n"
         f"Persona domain: {persona_domain}\n"
-        f"Generate up to {max_candidates} candidate topics.\n"
+        f"Generate up to {max_candidates} AI-security candidate topics.\n"
         "Use only these source URLs (copy exactly when citing):\n"
         f"{json.dumps(allowed_urls, ensure_ascii=True)}\n\n"
-        "Research context JSON:\n"
+        "Research context JSON (already AI-security filtered):\n"
         f"{json.dumps(payload, ensure_ascii=True)}\n\n"
         "Respond with JSON object: "
         '{"candidates":[{"title":"...","angle":"...","why_now":"...",'
-        '"relevance_to_persona":"...","source_urls":["..."],"confidence":0.0}]}'
+        '"relevance_to_persona":"...","source_urls":["..."],'
+        '"confidence":0.0,"ai_security_domain":"prompt_injection"}]}'
     )
 
 

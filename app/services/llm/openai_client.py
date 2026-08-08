@@ -6,7 +6,14 @@ import asyncio
 import json
 from typing import Any, TypeVar
 
-from openai import APIStatusError, AsyncOpenAI, RateLimitError
+from openai import (
+    APIConnectionError,
+    APIStatusError,
+    APITimeoutError,
+    AsyncOpenAI,
+    AuthenticationError,
+    RateLimitError,
+)
 from pydantic import BaseModel, ValidationError
 
 from app.logging import get_logger
@@ -109,11 +116,41 @@ class OpenAIClient:
                 if not content:
                     raise RuntimeError("Empty LLM response")
                 return content
-            except (RateLimitError, APIStatusError, TimeoutError, asyncio.TimeoutError) as exc:
+            except AuthenticationError as exc:
+                # Invalid/missing key — never retry; never fabricate a response.
+                logger.info(
+                    "llm_auth_failed",
+                    error=sanitize_error(exc),
+                    attempt=attempt,
+                )
+                raise
+            except (
+                RateLimitError,
+                APIConnectionError,
+                APITimeoutError,
+                APIStatusError,
+                TimeoutError,
+                asyncio.TimeoutError,
+            ) as exc:
                 last_error = exc
                 status = getattr(exc, "status_code", None)
-                retryable = status is None or status == 429 or status >= 500
+                # Auth-like 4xx (except 429) must not burn the retry budget.
+                retryable = (
+                    isinstance(exc, (APIConnectionError, APITimeoutError, TimeoutError, asyncio.TimeoutError))
+                    or status is None
+                    or status == 429
+                    or (isinstance(status, int) and status >= 500)
+                )
+                if isinstance(exc, APIStatusError) and status is not None and status < 500 and status != 429:
+                    retryable = False
                 if not retryable or attempt >= self._max_retries:
+                    logger.info(
+                        "llm_request_failed",
+                        error=sanitize_error(exc),
+                        attempt=attempt,
+                        status=status,
+                        retryable=retryable,
+                    )
                     raise
                 delay = backoff_seconds(attempt)
                 logger.info(

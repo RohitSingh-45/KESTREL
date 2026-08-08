@@ -10,6 +10,8 @@ from typing import Any
 from app.db.repositories.topics import TopicRepository
 from app.logging import get_logger
 from app.orchestration.locks import utc_now
+from app.services.ai_security.domains import is_valid_domain
+from app.services.ai_security.filter import assign_domain_from_research
 from app.services.llm.base import CandidateTopic, CandidateTopicList, LLMClient
 from app.services.llm.prompts import SYSTEM_PROMPT, build_candidate_user_prompt
 from app.services.research.base import normalize_url
@@ -74,7 +76,12 @@ class CandidateGenerationService:
                 schema=CandidateTopicList,
                 temperature=0.2,
             )
-            grounded = ground_candidates(parsed.candidates, allowed, url_by_normalized)
+            grounded = ground_candidates(
+                parsed.candidates,
+                allowed,
+                url_by_normalized,
+                research_items=research_items,
+            )
             logger.info(
                 "llm_candidate_generation_success",
                 agent_id=agent_id,
@@ -97,8 +104,11 @@ def ground_candidates(
     candidates: list[CandidateTopic],
     allowed_normalized_urls: set[str],
     url_by_normalized: dict[str, str],
+    *,
+    research_items: list[ResearchItem] | None = None,
 ) -> list[CandidateTopic]:
-    """Ensure every candidate URL exists in research input."""
+    """Ensure every candidate URL exists in research input and has an AI-security domain."""
+    research_items = research_items or []
     grounded: list[CandidateTopic] = []
     for candidate in candidates:
         valid_urls: list[str] = []
@@ -119,8 +129,23 @@ def ground_candidates(
                 title=candidate.title,
             )
             continue
+        domain = candidate.ai_security_domain
+        if not is_valid_domain(domain):
+            domain = assign_domain_from_research(valid_urls, research_items)
+        if not is_valid_domain(domain):
+            logger.info(
+                "candidate_grounding_rejected",
+                reason="no_ai_security_domain",
+                title=candidate.title,
+            )
+            continue
         grounded.append(
-            candidate.model_copy(update={"source_urls": list(dict.fromkeys(valid_urls))})
+            candidate.model_copy(
+                update={
+                    "source_urls": list(dict.fromkeys(valid_urls)),
+                    "ai_security_domain": domain,
+                }
+            )
         )
     return grounded
 
@@ -142,6 +167,7 @@ async def persist_candidates(
             "why_now": candidate.why_now,
             "relevance_to_persona": candidate.relevance_to_persona,
             "source_urls": candidate.source_urls,
+            "ai_security_domain": candidate.ai_security_domain,
         }
         await topics.create_topic(
             topic_id=topic_id,
@@ -153,6 +179,7 @@ async def persist_candidates(
             debate_json=None,
             embedding_json=None,
             decided_at=None,
+            ai_security_domain=candidate.ai_security_domain,
         )
         ids.append(topic_id)
     return ids

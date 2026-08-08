@@ -18,6 +18,15 @@ os.environ["LOG_LEVEL"] = "WARNING"
 os.environ["DATABASE_URL"] = f"sqlite+aiosqlite:///{TEST_DB_PATH.as_posix()}"
 os.environ["AGENT_CYCLE_SECONDS"] = "3600"
 os.environ["GENERATION_LEASE_SECONDS"] = "300"
+# Module 20 weight defaults (override stale shell SCORE_WEIGHT_* values).
+os.environ["SCORE_WEIGHT_RECENCY"] = "0.15"
+os.environ["SCORE_WEIGHT_PERSONA_FIT"] = "0.15"
+os.environ["SCORE_WEIGHT_IMPORTANCE"] = "0.15"
+os.environ["SCORE_WEIGHT_NOVELTY"] = "0.10"
+os.environ["SCORE_WEIGHT_SOURCE_QUALITY"] = "0.10"
+os.environ["SCORE_WEIGHT_EVIDENCE"] = "0.10"
+os.environ["SCORE_WEIGHT_AI_SECURITY"] = "0.25"
+os.environ["AI_SECURITY_FILTER_ENABLED"] = "true"
 
 from app.config import get_settings  # noqa: E402
 from app.db.base import Base  # noqa: E402

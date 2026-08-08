@@ -22,7 +22,10 @@ EventAction = Literal[
 EventType = Literal[
     "research_started",
     "research_completed",
+    "ai_security_filter_completed",
     "candidate_generated",
+    "candidate_skipped",
+    "candidate_failed",
     "candidate_selected",
     "candidate_rejected",
     "debate_completed",

@@ -132,15 +132,23 @@ class Settings(BaseSettings):
     )
 
     topic_funnel_top_k: int = Field(default=3, alias="TOPIC_FUNNEL_TOP_K", ge=1)
-    score_weight_recency: float = Field(default=0.20, alias="SCORE_WEIGHT_RECENCY")
-    score_weight_persona_fit: float = Field(default=0.25, alias="SCORE_WEIGHT_PERSONA_FIT")
-    score_weight_importance: float = Field(default=0.20, alias="SCORE_WEIGHT_IMPORTANCE")
-    score_weight_novelty: float = Field(default=0.15, alias="SCORE_WEIGHT_NOVELTY")
+    ai_security_filter_enabled: bool = Field(
+        default=True,
+        alias="AI_SECURITY_FILTER_ENABLED",
+    )
+    score_weight_recency: float = Field(default=0.15, alias="SCORE_WEIGHT_RECENCY")
+    score_weight_persona_fit: float = Field(default=0.15, alias="SCORE_WEIGHT_PERSONA_FIT")
+    score_weight_importance: float = Field(default=0.15, alias="SCORE_WEIGHT_IMPORTANCE")
+    score_weight_novelty: float = Field(default=0.10, alias="SCORE_WEIGHT_NOVELTY")
     score_weight_source_quality: float = Field(
         default=0.10,
         alias="SCORE_WEIGHT_SOURCE_QUALITY",
     )
     score_weight_evidence: float = Field(default=0.10, alias="SCORE_WEIGHT_EVIDENCE")
+    score_weight_ai_security: float = Field(
+        default=0.25,
+        alias="SCORE_WEIGHT_AI_SECURITY",
+    )
 
     source_quality_tier1_domains: str = Field(
         default=_DEFAULT_TIER1,
@@ -463,6 +471,7 @@ class Settings(BaseSettings):
             + self.score_weight_novelty
             + self.score_weight_source_quality
             + self.score_weight_evidence
+            + self.score_weight_ai_security
         )
         if abs(total - 1.0) > 1e-9:
             raise ValueError(
@@ -552,6 +561,7 @@ class Settings(BaseSettings):
             "novelty": self.score_weight_novelty,
             "source_quality": self.score_weight_source_quality,
             "evidence_quality": self.score_weight_evidence,
+            "ai_security_relevance": self.score_weight_ai_security,
         }
 
     def domain_list(self, raw: str) -> list[str]:

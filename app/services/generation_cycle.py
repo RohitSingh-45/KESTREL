@@ -22,6 +22,10 @@ from app.orchestration.locks import (
     new_lease_owner,
     utc_now,
 )
+from app.services.ai_security import (
+    AI_SECURITY_NO_FINDING_REASON,
+    AISecurityFilter,
+)
 from app.services.candidates import CandidateGenerationService, persist_candidates
 from app.services.consistency import ConsistencyGuard, consistency_payload
 from app.services.consistency.models import ConsistencyDecisionEnum
@@ -465,11 +469,74 @@ class GenerationCycleService:
             status="info",
             reason="Research gather started",
         )
-        research_items = await self._research_hub.gather(
+        research_raw = await self._research_hub.gather(
             query=agent_domain,
             agent_id=agent_id,
             cycle_id=cycle_id,
         )
+        raw_count = len(research_raw)
+        obs.safe_record(
+            "research_completed",
+            stage="research",
+            action="proceed" if research_raw else "skip",
+            status="ok" if research_raw else "skipped",
+            reason=(
+                f"{raw_count} research items gathered"
+                if research_raw
+                else "No research items available"
+            ),
+            evidence={"research_count": raw_count},
+        )
+
+        filter_meta: dict[str, Any] = {
+            "status": "disabled",
+            "accepted_count": raw_count,
+            "rejected_count": 0,
+        }
+        research_items = research_raw
+        if settings.ai_security_filter_enabled:
+            filter_result = AISecurityFilter().filter(research_raw)
+            filter_meta = filter_result.to_meta()
+            research_items = filter_result.accepted
+            obs.safe_record(
+                "ai_security_filter_completed",
+                stage="ai_security",
+                action="proceed" if research_items else "skip",
+                status="ok" if research_items else "skipped",
+                reason=(
+                    f"{len(research_items)} AI-security items retained "
+                    f"({filter_result.rejected_count} rejected)"
+                    if research_items
+                    else AI_SECURITY_NO_FINDING_REASON
+                ),
+                evidence={
+                    "accepted_count": len(research_items),
+                    "rejected_count": filter_result.rejected_count,
+                    "raw_count": raw_count,
+                    **filter_result.accepted_by_domain,
+                },
+            )
+            if not research_items:
+                return {
+                    "status": "skipped",
+                    "stage": "ai_security_filter",
+                    "reason": AI_SECURITY_NO_FINDING_REASON,
+                    "meta": _with_obs(
+                        {
+                            "research_count": raw_count,
+                            "ai_security_filter": filter_meta,
+                            "decision": {
+                                **_decision_payload(),
+                                "final_action": "skip",
+                                "reason": AI_SECURITY_NO_FINDING_REASON,
+                                "status": "no_ai_security_finding",
+                            },
+                        },
+                        cycle_status="skipped",
+                        cycle_reason=AI_SECURITY_NO_FINDING_REASON,
+                    ),
+                }
+
         try:
             research_ctx = decision.build_context(
                 agent_id=agent_id,
@@ -498,19 +565,6 @@ class GenerationCycleService:
                 "reason": sanitize_error(exc),
             }
 
-        obs.safe_record(
-            "research_completed",
-            stage="research",
-            action="proceed" if research_items else "skip",
-            status="ok" if research_items else "skipped",
-            reason=(
-                f"{len(research_items)} research items gathered"
-                if research_items
-                else "No research items available"
-            ),
-            evidence={"research_count": len(research_items)},
-        )
-
         # Decision gate failure (research_decision is None) must skip — never continue.
         if (
             not research_items
@@ -529,6 +583,7 @@ class GenerationCycleService:
                 "meta": _with_obs(
                     {
                         "research_count": 0 if not research_items else len(research_items),
+                        "ai_security_filter": filter_meta,
                         "decision": _decision_payload(),
                     },
                     cycle_status="skipped",
@@ -537,6 +592,21 @@ class GenerationCycleService:
             }
 
         if not self._candidates.llm_available:
+            obs.safe_record(
+                "candidate_skipped",
+                stage="candidate",
+                action="skip",
+                status="skipped",
+                reason="LLM unavailable — cannot generate grounded candidates",
+                evidence={"research_count": len(research_items)},
+            )
+            decision_meta_payload = _decision_payload()
+            decision_meta_payload = {
+                **decision_meta_payload,
+                "final_action": "skip",
+                "reason": "llm_unavailable",
+                "status": "blocked_by_llm",
+            }
             return {
                 "status": "skipped",
                 "stage": "candidate_generation",
@@ -544,20 +614,61 @@ class GenerationCycleService:
                 "meta": _with_obs(
                     {
                         "research_count": len(research_items),
-                        "decision": _decision_payload(),
+                        "candidate_count": 0,
+                        "decision": decision_meta_payload,
+                        "llm": {"status": "unavailable", "reason": "llm_unavailable"},
                     },
                     cycle_status="skipped",
                     cycle_reason="llm_unavailable",
                 ),
             }
 
-        candidates = await self._candidates.generate(
-            persona_name=agent_name,
-            persona_domain=agent_domain,
-            research_items=research_items,
-            agent_id=agent_id,
-            cycle_id=cycle_id,
-        )
+        try:
+            candidates = await self._candidates.generate(
+                persona_name=agent_name,
+                persona_domain=agent_domain,
+                research_items=research_items,
+                agent_id=agent_id,
+                cycle_id=cycle_id,
+            )
+        except Exception as exc:
+            err = sanitize_error(exc)
+            logger.exception(
+                "llm_candidate_generation_failed",
+                agent_id=agent_id,
+                cycle_id=cycle_id,
+                stage="candidate",
+                error=err,
+            )
+            obs.safe_record(
+                "candidate_failed",
+                stage="candidate",
+                action="skip",
+                status="failed",
+                reason=f"LLM candidate generation failed: {err}"[:180],
+                evidence={"research_count": len(research_items)},
+            )
+            decision_meta_payload = {
+                **_decision_payload(),
+                "final_action": "skip",
+                "reason": "llm_unstable",
+                "status": "blocked_by_llm",
+            }
+            return {
+                "status": "failed",
+                "stage": "candidate_generation",
+                "reason": "llm_unstable",
+                "meta": _with_obs(
+                    {
+                        "research_count": len(research_items),
+                        "candidate_count": 0,
+                        "decision": decision_meta_payload,
+                        "llm": {"status": "unstable", "reason": err},
+                    },
+                    cycle_status="failed",
+                    cycle_reason="llm_unstable",
+                ),
+            }
         obs.safe_record(
             "candidate_generated",
             stage="candidate",
@@ -1938,6 +2049,7 @@ class GenerationCycleService:
         meta_body: dict[str, Any] = {
             "summary": summary,
             "research_count": len(research_items),
+            "ai_security_filter": filter_meta,
             "candidate_count": len(candidates),
             "topic_ids": topic_ids,
             "selected_ids": selected_ids,

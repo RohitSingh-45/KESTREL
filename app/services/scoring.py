@@ -46,7 +46,9 @@ PERSONA_CONCEPTS: tuple[str, ...] = (
     "ai safety",
     "model security",
     "llm jailbreak",
-    "security",
+    "ai supply chain",
+    "model poisoning",
+    "data leakage",
 )
 
 IMPORTANCE_TERMS: tuple[str, ...] = (
@@ -69,8 +71,8 @@ IMPORTANCE_TERMS: tuple[str, ...] = (
     "compromise",
     "zero-day",
     "zeroday",
-    "ransomware",
-    "malware",
+    "jailbreak",
+    "exfiltration",
 )
 
 
@@ -83,8 +85,10 @@ class TopicScores(BaseModel):
     novelty: float
     source_quality: float
     evidence_quality: float
+    ai_security_relevance: float = 0.0
     final_score: float
     llm_confidence: float | None = None
+    ai_security_domain: str | None = None
 
     @field_validator(
         "recency",
@@ -93,6 +97,7 @@ class TopicScores(BaseModel):
         "novelty",
         "source_quality",
         "evidence_quality",
+        "ai_security_relevance",
         "final_score",
         mode="before",
     )
@@ -137,12 +142,13 @@ class ScoringContext:
 
 
 DEFAULT_WEIGHTS: dict[str, float] = {
-    "recency": 0.20,
-    "persona_fit": 0.25,
-    "importance": 0.20,
-    "novelty": 0.15,
+    "recency": 0.15,
+    "persona_fit": 0.15,
+    "importance": 0.15,
+    "novelty": 0.10,
     "source_quality": 0.10,
     "evidence_quality": 0.10,
+    "ai_security_relevance": 0.25,
 }
 
 
@@ -296,6 +302,66 @@ def score_source_quality(
     return clamp01(best)
 
 
+def score_ai_security_relevance(
+    candidate: CandidateTopic,
+    *,
+    research_text: str = "",
+    research_by_url: dict[str, ResearchItem] | None = None,
+) -> tuple[float, str | None]:
+    """Score genuine AI-security relevance; never invent a domain."""
+    from app.services.ai_security.domains import is_valid_domain
+    from app.services.ai_security.filter import AISecurityFilter, assign_domain_from_research
+
+    research_by_url = research_by_url or {}
+    domain = candidate.ai_security_domain
+    if not is_valid_domain(domain):
+        domain = assign_domain_from_research(
+            candidate.source_urls,
+            list(research_by_url.values()),
+        )
+
+    best_rel = 0.0
+    for url in candidate.source_urls:
+        item = research_by_url.get(normalize_url(url) or url)
+        if item is None:
+            continue
+        rel = getattr(item, "ai_security_relevance", None)
+        if isinstance(rel, (int, float)):
+            best_rel = max(best_rel, float(rel))
+        item_domain = getattr(item, "ai_security_domain", None)
+        if is_valid_domain(item_domain) and not is_valid_domain(domain):
+            domain = item_domain
+
+    if best_rel > 0.0 and is_valid_domain(domain):
+        return clamp01(best_rel), domain
+
+    blob = " ".join(
+        [
+            candidate.title,
+            candidate.angle,
+            candidate.why_now,
+            candidate.relevance_to_persona,
+            research_text,
+        ]
+    )
+    source_url = next(
+        (u for u in candidate.source_urls if u.startswith(("http://", "https://"))),
+        "https://example.com/ai-security-score-probe",
+    )
+    probe = ResearchItem(
+        title=candidate.title,
+        summary=blob[:4000],
+        url=source_url,
+        source_name="candidate",
+        discovered_at=datetime.now(timezone.utc),
+        content_hash="score-probe",
+    )
+    classified = AISecurityFilter().classify(probe)
+    if classified is None:
+        return 0.05, None
+    return clamp01(max(best_rel, classified.relevance)), classified.domain
+
+
 def score_evidence_quality(
     candidate: CandidateTopic,
     *,
@@ -379,6 +445,11 @@ class TopicScoringService:
         )
         weights = context.weights or DEFAULT_WEIGHTS
 
+        ai_rel, ai_domain = score_ai_security_relevance(
+            candidate,
+            research_text=research_text,
+            research_by_url=research_by_url,
+        )
         dims = {
             "recency": score_recency(reference, context.now),
             "persona_fit": score_persona_fit(
@@ -398,12 +469,14 @@ class TopicScoringService:
                 candidate,
                 research_by_url=research_by_url,
             ),
+            "ai_security_relevance": ai_rel,
         }
         final_score = compute_final_score(dims, weights)
         result = TopicScores(
             **dims,
             final_score=final_score,
             llm_confidence=candidate.confidence,
+            ai_security_domain=ai_domain or candidate.ai_security_domain,
         )
         logger.info(
             "topic_scored",
@@ -509,12 +582,15 @@ def scores_payload(
             "novelty": scored.scores.novelty,
             "source_quality": scored.scores.source_quality,
             "evidence_quality": scored.scores.evidence_quality,
+            "ai_security_relevance": scored.scores.ai_security_relevance,
         },
         "final_score": scored.scores.final_score,
         "rank": scored.rank,
         "decision": scored.decision,
         "top_k": scored.top_k,
         "llm_confidence": scored.scores.llm_confidence,
+        "ai_security_domain": scored.scores.ai_security_domain
+        or candidate.ai_security_domain,
         "angle": candidate.angle,
         "why_now": candidate.why_now,
         "relevance_to_persona": candidate.relevance_to_persona,
