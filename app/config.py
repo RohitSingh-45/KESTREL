@@ -52,6 +52,21 @@ class Settings(BaseSettings):
 
     app_env: str = Field(default="development", alias="APP_ENV")
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
+    port: int = Field(
+        default=8000,
+        alias="PORT",
+        ge=1,
+        le=65535,
+    )
+    # Comma-separated browser origins for split frontend/backend deploys.
+    # Same-origin (FastAPI serves frontend/dist) can leave this empty.
+    cors_origins: str = Field(default="", alias="CORS_ORIGINS")
+    # Optional shared secret placeholder for future auth; never logged.
+    secret_key: str | None = Field(default=None, alias="SECRET_KEY")
+    run_migrations_on_startup: bool = Field(
+        default=False,
+        alias="RUN_MIGRATIONS_ON_STARTUP",
+    )
     database_url: str = Field(
         default="sqlite+aiosqlite:///./data/kestrel.db",
         alias="DATABASE_URL",
@@ -398,12 +413,25 @@ class Settings(BaseSettings):
         le=50,
     )
 
-    @field_validator("openai_api_key", "research_api_key", mode="before")
+    @field_validator("openai_api_key", "research_api_key", "secret_key", mode="before")
     @classmethod
     def empty_str_to_none(cls, value: object) -> object:
         if isinstance(value, str) and not value.strip():
             return None
         return value
+
+    @field_validator("database_url", mode="before")
+    @classmethod
+    def normalize_database_url(cls, value: object) -> object:
+        """Normalize hosted Postgres URLs to SQLAlchemy asyncpg form."""
+        if not isinstance(value, str) or not value.strip():
+            return value
+        url = value.strip()
+        if url.startswith("postgres://"):
+            url = "postgresql://" + url[len("postgres://") :]
+        if url.startswith("postgresql://") and "+asyncpg" not in url.split("://", 1)[0]:
+            url = "postgresql+asyncpg://" + url[len("postgresql://") :]
+        return url
 
     @field_validator("log_level", mode="before")
     @classmethod
@@ -487,6 +515,25 @@ class Settings(BaseSettings):
     @property
     def is_sqlite(self) -> bool:
         return self.database_url.startswith("sqlite")
+
+    @property
+    def is_postgres(self) -> bool:
+        return self.database_url.startswith("postgresql")
+
+    @property
+    def cors_origin_list(self) -> list[str]:
+        origins = [part.strip() for part in self.cors_origins.split(",") if part.strip()]
+        if origins:
+            return origins
+        # Dev convenience only — production must set CORS_ORIGINS for split deploys.
+        if self.app_env in {"development", "test", "dev"}:
+            return [
+                "http://127.0.0.1:5173",
+                "http://localhost:5173",
+                "http://127.0.0.1:8000",
+                "http://localhost:8000",
+            ]
+        return []
 
     @property
     def rss_url_list(self) -> list[str]:

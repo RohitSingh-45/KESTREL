@@ -1,0 +1,34 @@
+# Recommended production path: single Render Web Service (API + built UI).
+# Create a persistent disk for SQLite, OR attach a Postgres database and set DATABASE_URL.
+# Free-tier web services may sleep — use a paid always-on plan for true 48h uptime.
+
+services:
+  - type: web
+    name: kestrel
+    runtime: docker
+    plan: starter
+    healthCheckPath: /health
+    dockerCommand: python scripts/start_production.py
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: LOG_LEVEL
+        value: INFO
+      - key: HOST
+        value: 0.0.0.0
+      - key: CORS_ORIGINS
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: gpt-4o-mini
+      - key: AGENT_CYCLE_SECONDS
+        value: "600"
+      - key: GENERATION_LEASE_SECONDS
+        value: "300"
+      - key: DATABASE_URL
+        value: sqlite+aiosqlite:////data/kestrel.db
+    disk:
+      name: kestrel-data
+      mountPath: /data
+      sizeGB: 1

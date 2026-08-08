@@ -1,5 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { fetchAgents, fetchState, initAgent, relativeTime } from './api'
+import {
+  fetchAgents,
+  fetchHealth,
+  fetchState,
+  initAgent,
+  relativeTime,
+  type HealthInfo,
+} from './api'
 import type { AgentSummary, DashboardState, PipelineNode } from './types'
 
 type Section =
@@ -45,11 +52,17 @@ export default function App() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [health, setHealth] = useState<HealthInfo | null>(null)
 
   const load = useCallback(async (id?: string) => {
     setLoading(true)
     setError(null)
     try {
+      try {
+        setHealth(await fetchHealth())
+      } catch {
+        setHealth(null)
+      }
       const list = await fetchAgents()
       setAgents(list)
       const chosen = id || agentId || list[0]?.agentId || ''
@@ -62,6 +75,7 @@ export default function App() {
       setState(next)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load dashboard')
+      setState(null)
     } finally {
       setLoading(false)
     }
@@ -176,7 +190,12 @@ export default function App() {
             </div>
             <div className="meta-card">
               <label>LLM status</label>
-              <strong>{hero?.llmStatus || 'unknown'}</strong>
+              <strong>
+                {hero?.llmStatus
+                  || (health?.llm === 'available' ? 'ready' : null)
+                  || (health?.llm === 'unavailable' ? 'unavailable' : null)
+                  || (error ? 'unreachable' : 'unknown')}
+              </strong>
             </div>
           </div>
         </div>

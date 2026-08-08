@@ -73,11 +73,21 @@ async def init_db(settings: Settings | None = None) -> AsyncEngine:
         app_env=settings.app_env,
     )
 
-    engine = create_async_engine(
-        settings.database_url,
-        echo=False,
-        pool_pre_ping=True,
-    )
+    engine_kwargs: dict[str, object] = {
+        "echo": False,
+        "pool_pre_ping": True,
+    }
+    if settings.is_postgres:
+        # Bounded pool for long-lived PaaS web processes (48h+ uptime).
+        engine_kwargs.update(
+            {
+                "pool_size": 5,
+                "max_overflow": 10,
+                "pool_recycle": 1800,
+            }
+        )
+
+    engine = create_async_engine(settings.database_url, **engine_kwargs)
 
     if settings.is_sqlite:
         _attach_sqlite_pragmas(
@@ -104,6 +114,19 @@ async def verify_db() -> None:
         async with session.begin():
             await session.execute(text("SELECT 1"))
     logger.info("database_verified")
+
+
+async def verify_schema() -> bool:
+    """Return True when core application tables exist (agents)."""
+    factory = get_session_factory()
+    try:
+        async with factory() as session:
+            async with session.begin():
+                await session.execute(text("SELECT 1 FROM agents LIMIT 1"))
+        return True
+    except Exception:
+        logger.warning("database_schema_missing", table="agents")
+        return False
 
 
 async def close_db() -> None:

@@ -47,6 +47,7 @@ Desktop.ini
 __pycache__/
 *.py[cod]
 .venv/
+.venv_*/
 venv/
 env/
 .pytest_cache/
