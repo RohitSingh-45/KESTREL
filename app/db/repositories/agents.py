@@ -67,7 +67,7 @@ class AgentRepository:
         )
         return list(result.scalars().all())
 
-    async def record_cycle_success(
+    async def record_cycle_attempt(
         self,
         agent_id: str,
         *,
@@ -82,3 +82,16 @@ class AgentRepository:
         agent.updated_at = updated_at
         await self._session.flush()
         return agent
+
+    async def record_cycle_success(
+        self,
+        agent_id: str,
+        *,
+        last_cycle_at: datetime,
+        updated_at: datetime,
+    ) -> Agent | None:
+        return await self.record_cycle_attempt(
+            agent_id,
+            last_cycle_at=last_cycle_at,
+            updated_at=updated_at,
+        )

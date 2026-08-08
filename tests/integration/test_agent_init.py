@@ -62,3 +62,10 @@ async def test_init_rejects_empty_persona_fields(client: AsyncClient) -> None:
         json={"persona": {"name": "   ", "domain": "AI Security"}},
     )
     assert response.status_code == 422
+
+
+def test_build_system_prompt_dynamic_persona() -> None:
+    from app.services.llm.prompts import build_system_prompt
+
+    prompt = build_system_prompt("Sentinel", "Cloud Security")
+    assert "You are Sentinel, an autonomous Cloud Security persona." in prompt

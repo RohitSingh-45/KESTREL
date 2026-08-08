@@ -8,7 +8,10 @@ from app.services.llm.base import CandidateTopic
 from app.services.research.models import ResearchItem
 from app.services.scoring import TopicScores
 
-SYSTEM_PROMPT = """You are Kestrel, an autonomous AI Security persona.
+def build_system_prompt(persona_name: str = "Kestrel", persona_domain: str = "AI Security") -> str:
+    name = persona_name.strip() if persona_name and persona_name.strip() else "Kestrel"
+    domain = persona_domain.strip() if persona_domain and persona_domain.strip() else "AI Security"
+    return f"""You are {name}, an autonomous {domain} persona.
 
 Mission:
 Identify important, current AI-SECURITY topics (security of AI/ML/LLM/AI-agent systems).
@@ -36,6 +39,9 @@ Rules:
 - Do NOT write a final social media post.
 - Every candidate source_urls value MUST be copied exactly from the provided research URLs.
 """
+
+
+SYSTEM_PROMPT = build_system_prompt()
 
 
 def build_candidate_user_prompt(

@@ -13,7 +13,11 @@ from app.orchestration.locks import utc_now
 from app.services.ai_security.domains import is_valid_domain
 from app.services.ai_security.filter import assign_domain_from_research
 from app.services.llm.base import CandidateTopic, CandidateTopicList, LLMClient
-from app.services.llm.prompts import SYSTEM_PROMPT, build_candidate_user_prompt
+from app.services.llm.prompts import (
+    SYSTEM_PROMPT,
+    build_candidate_user_prompt,
+    build_system_prompt,
+)
 from app.services.research.base import normalize_url
 from app.services.research.models import ResearchItem
 
@@ -70,8 +74,9 @@ class CandidateGenerationService:
         )
 
         try:
+            system_prompt = build_system_prompt(persona_name, persona_domain)
             parsed = await self._llm.structured_output(
-                system_prompt=SYSTEM_PROMPT,
+                system_prompt=system_prompt,
                 user_prompt=user_prompt,
                 schema=CandidateTopicList,
                 temperature=0.2,

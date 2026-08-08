@@ -244,6 +244,11 @@ class GenerationCycleService:
                         )
                         if outcome["status"] == "skipped":
                             finished = utc_now()
+                            await agents.record_cycle_attempt(
+                                agent_id,
+                                last_cycle_at=finished,
+                                updated_at=finished,
+                            )
                             await runs.mark_skipped(
                                 run_id,
                                 finished_at=finished,
@@ -267,6 +272,11 @@ class GenerationCycleService:
                             return "skipped"
                         if outcome["status"] == "failed":
                             finished = utc_now()
+                            await agents.record_cycle_attempt(
+                                agent_id,
+                                last_cycle_at=finished,
+                                updated_at=finished,
+                            )
                             await runs.mark_failed(
                                 run_id,
                                 finished_at=finished,
@@ -592,6 +602,12 @@ class GenerationCycleService:
             }
 
         if not self._candidates.llm_available:
+            logger.info(
+                "llm_unavailable_skipping_candidate_generation",
+                agent_id=agent_id,
+                cycle_id=cycle_id,
+                reason="OPENAI_API_KEY missing or LLM client unavailable",
+            )
             obs.safe_record(
                 "candidate_skipped",
                 stage="candidate",

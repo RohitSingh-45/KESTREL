@@ -78,7 +78,7 @@ class Settings(BaseSettings):
         le=86_400,
     )
     generation_lease_seconds: int = Field(
-        default=300,
+        default=120,
         alias="GENERATION_LEASE_SECONDS",
         ge=1,
         le=86_400,
@@ -94,6 +94,11 @@ class Settings(BaseSettings):
     llm_provider: str = Field(default="openai", alias="LLM_PROVIDER", min_length=1)
     openai_api_key: str | None = Field(default=None, alias="OPENAI_API_KEY")
     openai_model: str = Field(default="gpt-4o-mini", alias="OPENAI_MODEL", min_length=1)
+    # Optional base URL override — set to use Gemini, OpenRouter, or any OpenAI-compatible API.
+    # Examples:
+    #   Gemini:     https://generativelanguage.googleapis.com/v1beta/openai/
+    #   OpenRouter: https://openrouter.ai/api/v1
+    openai_base_url: str | None = Field(default=None, alias="OPENAI_BASE_URL")
     openai_timeout_seconds: float = Field(
         default=45.0,
         alias="OPENAI_TIMEOUT_SECONDS",

@@ -15,6 +15,12 @@ from __future__ import annotations
 
 import asyncio
 import sys
+from pathlib import Path
+
+# Add project root to sys.path when executed directly
+ROOT_DIR = Path(__file__).resolve().parent.parent
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
 
 from app.config import get_settings
 from app.services.llm.factory import build_llm_from_settings

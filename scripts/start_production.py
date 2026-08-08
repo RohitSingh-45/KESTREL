@@ -48,7 +48,7 @@ def main() -> int:
             str(port),
             "--proxy-headers",
             "--forwarded-allow-ips",
-            "*",
+            "127.0.0.1" if os.name == "nt" else "*",
             "--timeout-keep-alive",
             "30",
         ]

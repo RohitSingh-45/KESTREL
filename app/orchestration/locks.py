@@ -129,6 +129,11 @@ class GenerationLeaseManager:
         await self._session.flush()
         return int(result.rowcount or 0)
 
+    async def clear_all(self) -> int:
+        result = await self._session.execute(delete(GenerationLease))
+        await self._session.flush()
+        return int(result.rowcount or 0)
+
     async def get(self, agent_id: str) -> GenerationLease | None:
         result = await self._session.execute(
             select(GenerationLease).where(GenerationLease.agent_id == agent_id)
