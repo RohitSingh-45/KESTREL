@@ -32,6 +32,7 @@ def build_llm_from_settings(settings: Settings | None = None) -> LLMClient:
         "llm_client_built",
         provider=provider,
         model=settings.openai_model,
+        base_url=settings.openai_base_url or "(default openai)",
         timeout_seconds=settings.openai_timeout_seconds,
         max_retries=settings.openai_max_retries,
     )
@@ -40,4 +41,5 @@ def build_llm_from_settings(settings: Settings | None = None) -> LLMClient:
         model=settings.openai_model,
         timeout_seconds=settings.openai_timeout_seconds,
         max_retries=settings.openai_max_retries,
+        base_url=settings.openai_base_url,
     )

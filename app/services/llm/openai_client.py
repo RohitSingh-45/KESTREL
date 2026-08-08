@@ -37,6 +37,7 @@ class OpenAIClient:
         model: str,
         timeout_seconds: float = 45.0,
         max_retries: int = 3,
+        base_url: str | None = None,
     ) -> None:
         self._model = model
         # Application owns retries; disable nested SDK retries.
@@ -45,6 +46,7 @@ class OpenAIClient:
             api_key=api_key,
             timeout=timeout_seconds,
             max_retries=0,
+            **(dict(base_url=base_url) if base_url else {}),
         )
 
     @property
