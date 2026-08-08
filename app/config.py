@@ -90,6 +90,8 @@ class Settings(BaseSettings):
         le=60_000,
     )
 
+    # Provider selector — OpenAI is primary; others can plug into the factory later.
+    llm_provider: str = Field(default="openai", alias="LLM_PROVIDER", min_length=1)
     openai_api_key: str | None = Field(default=None, alias="OPENAI_API_KEY")
     openai_model: str = Field(default="gpt-4o-mini", alias="OPENAI_MODEL", min_length=1)
     openai_timeout_seconds: float = Field(
@@ -104,6 +106,8 @@ class Settings(BaseSettings):
         ge=0,
         le=10,
     )
+    # When true (default outside tests), startup runs one real connectivity probe.
+    llm_probe_on_startup: bool = Field(default=True, alias="LLM_PROBE_ON_STARTUP")
 
     research_api_key: str | None = Field(default=None, alias="RESEARCH_API_KEY")
     research_max_items: int = Field(
@@ -550,7 +554,10 @@ class Settings(BaseSettings):
 
     @property
     def llm_configured(self) -> bool:
-        return bool(self.openai_api_key)
+        provider = (self.llm_provider or "openai").strip().lower()
+        if provider == "openai":
+            return bool(self.openai_api_key)
+        return False
 
     @property
     def score_weights(self) -> dict[str, float]:

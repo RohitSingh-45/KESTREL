@@ -37,7 +37,13 @@ async def test_health_alive_without_openai_key(
     assert res.status_code == 200
     body = res.json()
     assert body["status"] == "ok"
-    assert body["llm"] in {"available", "unavailable"}
+    assert body["llm"] in {
+        "ready",
+        "unavailable",
+        "authentication_failed",
+        "unstable",
+        "available",  # legacy
+    }
 
 
 @pytest.mark.asyncio

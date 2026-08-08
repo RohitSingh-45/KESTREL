@@ -456,7 +456,13 @@ async def test_health_ok_when_llm_unavailable(lifespan_client: AsyncClient) -> N
     assert body["status"] == "ok"
     assert body["db"] == "ok"
     assert body["scheduler"] == "running"
-    assert body["llm"] in {"available", "unavailable"}
+    assert body["llm"] in {
+        "ready",
+        "unavailable",
+        "authentication_failed",
+        "unstable",
+        "available",
+    }
 
 
 @pytest.mark.asyncio

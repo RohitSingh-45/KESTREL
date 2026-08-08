@@ -27,6 +27,8 @@ os.environ["SCORE_WEIGHT_SOURCE_QUALITY"] = "0.10"
 os.environ["SCORE_WEIGHT_EVIDENCE"] = "0.10"
 os.environ["SCORE_WEIGHT_AI_SECURITY"] = "0.25"
 os.environ["AI_SECURITY_FILTER_ENABLED"] = "true"
+os.environ["LLM_PROVIDER"] = "openai"
+os.environ["LLM_PROBE_ON_STARTUP"] = "false"
 
 from app.config import get_settings  # noqa: E402
 from app.db.base import Base  # noqa: E402

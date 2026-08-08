@@ -7,7 +7,6 @@ from typing import Any
 from fastapi import APIRouter, Request, Response, status
 from sqlalchemy import text
 
-from app.config import get_settings
 from app.db.session import get_session_factory
 from app.logging import get_logger
 
@@ -38,11 +37,11 @@ async def health(request: Request) -> dict[str, Any]:
     else:
         scheduler_status = "not_started"
 
-    settings = get_settings()
-    if lifecycle is not None and hasattr(lifecycle, "llm_available"):
-        llm_status = "available" if lifecycle.llm_available else "unavailable"
+    # Truthful probe-backed status (ready only after real connectivity success).
+    if lifecycle is not None and getattr(lifecycle, "llm_status", None):
+        llm_status = str(lifecycle.llm_status)
     else:
-        llm_status = "available" if settings.llm_configured else "unavailable"
+        llm_status = "unavailable"
 
     response = {
         "status": "ok",
@@ -58,16 +57,11 @@ async def health(request: Request) -> dict[str, Any]:
 @router.get("/ready")
 async def ready(request: Request, response: Response) -> dict[str, Any]:
     """Readiness probe — fails when the database/schema is unreachable."""
-    settings = get_settings()
     lifecycle = getattr(request.app.state, "lifecycle", None)
-    llm_status = (
-        "available"
-        if (
-            (lifecycle is not None and getattr(lifecycle, "llm_available", False))
-            or settings.llm_configured
-        )
-        else "unavailable"
-    )
+    if lifecycle is not None and getattr(lifecycle, "llm_status", None):
+        llm_status = str(lifecycle.llm_status)
+    else:
+        llm_status = "unavailable"
     try:
         factory = get_session_factory()
         async with factory() as session:

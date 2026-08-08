@@ -10,7 +10,8 @@ from app.orchestration.locks import AgentLockManager
 from app.orchestration.scheduler import AgentScheduler
 from app.services.candidates import CandidateGenerationService
 from app.services.generation_cycle import GenerationCycleService
-from app.services.llm.openai_client import build_llm_client
+from app.services.llm.factory import build_llm_from_settings
+from app.services.llm.status import LLMStatus, probe_llm
 from app.services.reliability.recovery import recover_stale_runtime_state
 from app.services.research.factory import build_research_hub
 from app.worker.generation_worker import GenerationWorker
@@ -28,6 +29,7 @@ class AgentLifecycleService:
         self._worker: GenerationWorker | None = None
         self._scheduler: AgentScheduler | None = None
         self._llm_available = False
+        self._llm_status: LLMStatus = "unavailable"
         self._started = False
 
     @property
@@ -60,18 +62,43 @@ class AgentLifecycleService:
     def llm_available(self) -> bool:
         return self._llm_available
 
+    @property
+    def llm_status(self) -> LLMStatus:
+        """Probe-backed status: ready only after a successful real request."""
+        return self._llm_status
+
     async def start(self) -> None:
         """Recover stale state, start scheduler, register running agents."""
         if self._started:
             return
 
-        llm = build_llm_client(
-            api_key=self._settings.openai_api_key,
-            model=self._settings.openai_model,
-            timeout_seconds=self._settings.openai_timeout_seconds,
-            max_retries=self._settings.openai_max_retries,
-        )
-        self._llm_available = bool(getattr(llm, "available", False))
+        llm = build_llm_from_settings(self._settings)
+        client_available = bool(getattr(llm, "available", False))
+        # Never claim READY without a real connectivity probe.
+        if not client_available:
+            self._llm_status = "unavailable"
+            self._llm_available = False
+        elif self._settings.app_env == "test" or not self._settings.llm_probe_on_startup:
+            self._llm_status = "unavailable"
+            self._llm_available = client_available
+            logger.info(
+                "llm_probe_skipped",
+                app_env=self._settings.app_env,
+                probe_on_startup=self._settings.llm_probe_on_startup,
+            )
+        else:
+            self._llm_status = await probe_llm(llm)
+            if self._llm_status == "authentication_failed":
+                from app.services.llm.base import UnavailableLLMClient
+
+                llm = UnavailableLLMClient()
+                self._llm_available = False
+            else:
+                # ready → available; unstable → keep client so cycles may retry.
+                self._llm_available = self._llm_status == "ready" or (
+                    self._llm_status == "unstable" and client_available
+                )
+
         research_hub = build_research_hub(self._settings)
         candidate_service = CandidateGenerationService(llm)
 
@@ -96,7 +123,9 @@ class AgentLifecycleService:
         logger.info(
             "lifecycle_started",
             status="running",
-            llm="available" if self._llm_available else "unavailable",
+            llm=self._llm_status,
+            llm_available=self._llm_available,
+            provider=(self._settings.llm_provider or "openai"),
         )
 
     async def stop(self, *, wait: bool = False) -> None:

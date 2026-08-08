@@ -191,10 +191,18 @@ export default function App() {
             <div className="meta-card">
               <label>LLM status</label>
               <strong>
-                {hero?.llmStatus
-                  || (health?.llm === 'available' ? 'ready' : null)
-                  || (health?.llm === 'unavailable' ? 'unavailable' : null)
-                  || (error ? 'unreachable' : 'unknown')}
+                {(() => {
+                  const raw =
+                    hero?.llmStatus
+                    || health?.llm
+                    || (error ? 'unreachable' : 'unknown')
+                  const key = String(raw).toLowerCase().replace(/\s+/g, '_')
+                  if (key === 'ready' || key === 'available') return 'LLM READY'
+                  if (key === 'authentication_failed') return 'LLM AUTHENTICATION FAILED'
+                  if (key === 'unstable') return 'LLM UNSTABLE'
+                  if (key === 'unavailable') return 'LLM UNAVAILABLE'
+                  return String(raw).toUpperCase()
+                })()}
               </strong>
             </div>
           </div>

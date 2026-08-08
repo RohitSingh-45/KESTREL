@@ -17,8 +17,17 @@ def test_llm_status_unstable_after_llm_failure() -> None:
     assert DashboardService._llm_status("sk-test", meta, "failed", "llm_unstable") == "unstable"
 
 
-def test_llm_status_ready_when_key_and_healthy() -> None:
-    assert DashboardService._llm_status("sk-test", {}, "success", None) == "ready"
+def test_llm_status_ready_only_after_probe() -> None:
+    assert (
+        DashboardService._llm_status("sk-test", {}, "success", None, probed_status=None)
+        == "unavailable"
+    )
+    assert (
+        DashboardService._llm_status(
+            "sk-test", {}, "success", None, probed_status="ready"
+        )
+        == "ready"
+    )
 
 
 def test_pipeline_marks_llm_dependent_stages_skipped() -> None:

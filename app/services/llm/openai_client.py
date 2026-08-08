@@ -180,6 +180,7 @@ def build_llm_client(
     timeout_seconds: float = 45.0,
     max_retries: int = 3,
 ) -> OpenAIClient | UnavailableLLMClient:
+    """Legacy OpenAI builder. Prefer ``build_llm_from_settings`` for new code."""
     if not api_key:
         return UnavailableLLMClient()
     return OpenAIClient(

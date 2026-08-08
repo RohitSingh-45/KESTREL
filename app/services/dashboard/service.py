@@ -66,13 +66,19 @@ def _load_json(raw: str | None) -> dict[str, Any]:
 class DashboardService:
     """Operator-facing read models derived from persisted agent state."""
 
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(
+        self,
+        session: AsyncSession,
+        *,
+        probed_llm_status: str | None = None,
+    ) -> None:
         self._session = session
         self._agents = AgentRepository(session)
         self._posts = PostRepository(session)
         self._topics = TopicRepository(session)
         self._memory = MemoryRepository(session)
         self._runs = PipelineRunRepository(session)
+        self._probed_llm_status = probed_llm_status
 
     async def list_agents(self) -> list[dict[str, Any]]:
         agents = await self._agents.list_all(limit=50)
@@ -122,6 +128,7 @@ class DashboardService:
             meta,
             latest.status if latest else None,
             latest.error if latest else None,
+            probed_status=getattr(self, "_probed_llm_status", None),
         )
 
         return sanitize_mapping(
@@ -189,8 +196,10 @@ class DashboardService:
         meta: dict[str, Any],
         run_status: str | None,
         run_error: str | None,
+        *,
+        probed_status: str | None = None,
     ) -> str:
-        """Truthful LLM badge: ready | unavailable | unstable."""
+        """Truthful LLM badge. READY only after a successful real probe."""
         llm_meta = meta.get("llm") if isinstance(meta.get("llm"), dict) else {}
         obs = meta.get("observability") if isinstance(meta.get("observability"), dict) else {}
         cycle_reason = str(
@@ -201,17 +210,28 @@ class DashboardService:
             or ""
         ).lower()
         llm_meta_status = str(llm_meta.get("status") or "").lower()
+        probed = (probed_status or "").strip().lower()
 
+        if llm_meta_status == "authentication_failed" or "auth" in cycle_reason:
+            return "authentication_failed"
+        if probed == "authentication_failed":
+            return "authentication_failed"
         if llm_meta_status == "unstable" or "llm_unstable" in cycle_reason:
+            return "unstable"
+        if probed == "unstable":
             return "unstable"
         if not api_key:
             return "unavailable"
         if llm_meta_status == "unavailable" or "llm_unavailable" in cycle_reason:
-            # Key may have been removed mid-run, or lifecycle started without key.
             return "unavailable"
         if run_status == "failed" and "llm" in cycle_reason:
             return "unstable"
-        return "ready"
+        # Key present is not enough — require probe success for READY.
+        if probed == "ready":
+            return "ready"
+        if probed in {"unavailable", ""}:
+            return "unavailable"
+        return "unavailable"
 
     def _pipeline_nodes(
         self,

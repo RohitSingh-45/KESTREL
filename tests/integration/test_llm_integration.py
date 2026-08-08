@@ -30,4 +30,10 @@ async def test_health_includes_llm_field_without_breaking(lifespan_client: Async
     assert payload["status"] == "ok"
     assert payload["db"] == "ok"
     assert payload["scheduler"] == "running"
-    assert payload["llm"] in {"available", "unavailable"}
+    assert payload["llm"] in {
+        "ready",
+        "unavailable",
+        "authentication_failed",
+        "unstable",
+        "available",
+    }
