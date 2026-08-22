@@ -1,7 +1,6 @@
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
-import fs from 'node:fs'
 import path from 'node:path'
 
 export default defineConfig(({ mode }) => {
@@ -17,25 +16,14 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       port: 5173,
+      // Listen on IPv4 so both http://127.0.0.1:5173 and http://localhost:5173 work.
+      host: '0.0.0.0',
+      strictPort: true,
       proxy: {
         '/api': {
           target: apiTarget,
           changeOrigin: true,
           timeout: 0,
-          configure: (proxy) => {
-            proxy.on('error', (err) => {
-              // #region agent log
-              try {
-                fs.appendFileSync(
-                  path.resolve(__dirname, '../debug-41078f.log'),
-                  `${JSON.stringify({ sessionId: '41078f', hypothesisId: 'G', location: 'vite.config.ts:proxy', message: 'proxy_error', data: { error: String(err), target: apiTarget }, timestamp: Date.now() })}\n`,
-                )
-              } catch {
-                /* ignore */
-              }
-              // #endregion
-            })
-          },
         },
       },
     },
