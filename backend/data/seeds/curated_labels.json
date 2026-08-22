@@ -1,0 +1,34 @@
+{
+  "_meta": {
+    "description": "Small curated bootstrap of well-known EVM exchange hot wallets so live mode can attribute something before the bulk label datasets are downloaded.",
+    "authoritative_sources": [
+      "dawsbot/eth-labels (MIT) - scripts/ingest_labels.py --source eth-labels",
+      "OFAC SDN crypto addresses - scripts/ingest_labels.py --source ofac",
+      "MBAL / Codatta samples - scripts/ingest_labels.py --source mbal"
+    ],
+    "tron_note": "TRON hot wallets are deliberately absent. Hand-transcribing base58 addresses is error prone, so TRON labels come from live TronScan enrichment and from the synthetic dataset instead.",
+    "accuracy_note": "These are published exchange hot wallets. A transcription error would cause a missed label, never a false accusation, because the attribution layer only matches on exact address equality."
+  },
+  "labels": [
+    { "chain": "ethereum", "address": "0x3f5ce5fbfe3e9af3971dd833d26ba9b5c936f0be", "label": "Binance 1", "entity_name": "Binance", "entity_type": "cex_hot_wallet", "vasp_slug": "binance" },
+    { "chain": "ethereum", "address": "0xd551234ae421e3bcba99a0da6d736074f22192ff", "label": "Binance 2", "entity_name": "Binance", "entity_type": "cex_hot_wallet", "vasp_slug": "binance" },
+    { "chain": "ethereum", "address": "0x564286362092d8e7936f0549571a803b203aaced", "label": "Binance 3", "entity_name": "Binance", "entity_type": "cex_hot_wallet", "vasp_slug": "binance" },
+    { "chain": "ethereum", "address": "0x0681d8db095565fe8a346fa0277bffde9c0edbbf", "label": "Binance 4", "entity_name": "Binance", "entity_type": "cex_hot_wallet", "vasp_slug": "binance" },
+    { "chain": "ethereum", "address": "0xfe9e8709d3215310075d67e3ed32a380ccf451c8", "label": "Binance 5", "entity_name": "Binance", "entity_type": "cex_hot_wallet", "vasp_slug": "binance" },
+    { "chain": "ethereum", "address": "0x28c6c06298d514db089934071355e5743bf21d60", "label": "Binance 14", "entity_name": "Binance", "entity_type": "cex_hot_wallet", "vasp_slug": "binance" },
+    { "chain": "ethereum", "address": "0x21a31ee1afc51d94c2efccaa2092ad1028285549", "label": "Binance 15", "entity_name": "Binance", "entity_type": "cex_hot_wallet", "vasp_slug": "binance" },
+    { "chain": "ethereum", "address": "0xdfd5293d8e347dfe59e90efd55b2956a1343963d", "label": "Binance 16", "entity_name": "Binance", "entity_type": "cex_hot_wallet", "vasp_slug": "binance" },
+    { "chain": "ethereum", "address": "0x56eddb7aa87536c09ccc2793473599fd21a8b17f", "label": "Binance 17", "entity_name": "Binance", "entity_type": "cex_hot_wallet", "vasp_slug": "binance" },
+    { "chain": "ethereum", "address": "0x9696f59e4d72e237be84ffd425dcad154bf96976", "label": "Binance 18", "entity_name": "Binance", "entity_type": "cex_hot_wallet", "vasp_slug": "binance" },
+    { "chain": "bsc", "address": "0x8894e0a0c962cb723c1976a4421c95949be2d4e3", "label": "Binance Hot Wallet (BSC)", "entity_name": "Binance", "entity_type": "cex_hot_wallet", "vasp_slug": "binance" },
+    { "chain": "ethereum", "address": "0x6cc5f688a315f3dc28a7781717a9a798a59fda7b", "label": "OKX 1", "entity_name": "OKX", "entity_type": "cex_hot_wallet", "vasp_slug": "okx" },
+    { "chain": "ethereum", "address": "0x236f9f97e0e62388479bf9e5ba4889e46b0273c3", "label": "OKX 2", "entity_name": "OKX", "entity_type": "cex_hot_wallet", "vasp_slug": "okx" },
+    { "chain": "ethereum", "address": "0xf89d7b9c864f589bbf53a82105107622b35eaa40", "label": "Bybit Hot Wallet", "entity_name": "Bybit", "entity_type": "cex_hot_wallet", "vasp_slug": "bybit" },
+    { "chain": "ethereum", "address": "0x2910543af39aba0cd09dbb2d50200b3e800a63d2", "label": "Kraken 1", "entity_name": "Kraken", "entity_type": "cex_hot_wallet", "vasp_slug": "kraken" },
+    { "chain": "ethereum", "address": "0x0a869d79a7052c7f1b55a8ebabbea3420f0d1e13", "label": "Kraken 2", "entity_name": "Kraken", "entity_type": "cex_hot_wallet", "vasp_slug": "kraken" },
+    { "chain": "ethereum", "address": "0xdc76cd25977e0a5ae17155770273ad58648900d3", "label": "HTX (Huobi) 1", "entity_name": "HTX", "entity_type": "cex_hot_wallet", "vasp_slug": "htx" },
+    { "chain": "ethereum", "address": "0xab5c66752a9e8167967685f1450532fb96d5d24f", "label": "HTX (Huobi) 2", "entity_name": "HTX", "entity_type": "cex_hot_wallet", "vasp_slug": "htx" },
+    { "chain": "ethereum", "address": "0x2b5634c42055806a59e9107ed44d43c426e58258", "label": "KuCoin 1", "entity_name": "KuCoin", "entity_type": "cex_hot_wallet", "vasp_slug": "kucoin" },
+    { "chain": "ethereum", "address": "0x0d0707963952f2fba59dd06f2b425ace40b492fe", "label": "Gate.io 1", "entity_name": "Gate.io", "entity_type": "cex_hot_wallet", "vasp_slug": "gate-io" }
+  ]
+}

@@ -1,33 +1,82 @@
+name: chainwatch
+
 services:
-  kestrel:
-    build: .
-    ports:
-      - "${PORT:-8000}:${PORT:-8000}"
-    env_file:
-      - path: .env
-        required: false
+  postgres:
+    image: postgres:16-alpine
     environment:
-      APP_ENV: ${APP_ENV:-production}
-      LOG_LEVEL: ${LOG_LEVEL:-INFO}
-      PORT: ${PORT:-8000}
-      HOST: 0.0.0.0
-      DATABASE_URL: ${DATABASE_URL:-sqlite+aiosqlite:////data/kestrel.db}
-      CORS_ORIGINS: ${CORS_ORIGINS:-}
-      AGENT_CYCLE_SECONDS: ${AGENT_CYCLE_SECONDS:-600}
-      GENERATION_LEASE_SECONDS: ${GENERATION_LEASE_SECONDS:-300}
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
-      OPENAI_TIMEOUT_SECONDS: ${OPENAI_TIMEOUT_SECONDS:-45}
-      OPENAI_MAX_RETRIES: ${OPENAI_MAX_RETRIES:-3}
-      RESEARCH_HTTP_TIMEOUT_SECONDS: ${RESEARCH_HTTP_TIMEOUT_SECONDS:-20}
-      RESEARCH_MAX_ITEMS: ${RESEARCH_MAX_ITEMS:-20}
-      SQLITE_BUSY_TIMEOUT_MS: ${SQLITE_BUSY_TIMEOUT_MS:-5000}
+      POSTGRES_USER: chainwatch
+      POSTGRES_PASSWORD: chainwatch
+      POSTGRES_DB: chainwatch
+    ports:
+      - '5432:5432'
     volumes:
-      - ./data:/data
+      - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://127.0.0.1:8000/health"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 20s
-    restart: unless-stopped
+      test: ['CMD-SHELL', 'pg_isready -U chainwatch']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    command: ['redis-server', '--appendonly', 'no', '--save', '']
+    ports:
+      - '6379:6379'
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  backend:
+    build:
+      context: ./backend
+    environment: &backend_env
+      APP_ENV: dev
+      DATABASE_URL: postgresql+asyncpg://chainwatch:chainwatch@postgres:5432/chainwatch
+      REDIS_URL: redis://redis:6379/0
+      REDIS_REQUIRED: 'true'
+      JOB_BACKEND: celery
+      DATA_MODE: ${DATA_MODE:-hybrid}
+      SECRET_KEY: ${SECRET_KEY:-dev-insecure-change-me}
+      ETHERSCAN_API_KEY: ${ETHERSCAN_API_KEY:-}
+      TRONGRID_API_KEY: ${TRONGRID_API_KEY:-}
+      BLOCKCHAIR_API_KEY: ${BLOCKCHAIR_API_KEY:-}
+      CORS_ORIGINS: http://localhost:5173,http://localhost:4173
+    command: >
+      sh -c "python -m scripts.seed_all --if-empty &&
+             uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    ports:
+      - '8000:8000'
+    volumes:
+      - reportdata:/app/var
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: ./backend
+    environment: *backend_env
+    command: celery -A app.workers.celery_app.celery_app worker --loglevel=info --pool=solo
+    volumes:
+      - reportdata:/app/var
+    depends_on:
+      backend:
+        condition: service_started
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_BASE: /api/v1
+    ports:
+      - '5173:80'
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:
+  reportdata:

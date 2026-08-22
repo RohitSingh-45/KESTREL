@@ -1,76 +1,41 @@
-# Environment and secrets
-.env
-.env.*
-!.env.example
-*.pem
-*.key
-secrets/
-credentials.json
-service-account*.json
-
-# Dependencies
-node_modules/
-bower_components/
-vendor/
-.pnp
-.pnp.js
-
-# Build / output
-dist/
-build/
-out/
-.next/
-.nuxt/
-.turbo/
-.cache/
-coverage/
-*.tsbuildinfo
-
-# Logs and debug
-logs/
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-
-# OS / editor
-.DS_Store
-Thumbs.db
-Desktop.ini
-.idea/
-.vscode/
-*.swp
-*.swo
-
 # Python
 __pycache__/
 *.py[cod]
-.venv/
-.venv_*/
-venv/
-env/
-.pytest_cache/
-.mypy_cache/
-
-# Misc local
-*.local
-.temp/
-tmp/
-
-# Virtual environments / packaging
-.venv/
-venv/
 *.egg-info/
-kestrel.egg-info/
-.eggs/
+.venv/
+venv/
 .pytest_cache/
-dist/
-build/
+.ruff_cache/
+.mypy_cache/
+htmlcov/
+.coverage
 
-# SQLite database files (keep data/ directory via .gitkeep)
-data/*.db
-data/*.db-wal
-data/*.db-shm
-tests/test_kestrel.db
-tests/test_kestrel.db-*
+# Environment
+.env
+.env.local
+*.env
+!.env.example
+
+# Databases
+*.db
+*.db-shm
+*.db-wal
+*.sqlite3
+
+# Node
+node_modules/
+dist/
+.vite/
+*.tsbuildinfo
+
+# Generated artifacts
+backend/var/
+backend/data/labels_cache/
+backend/ml/artifacts/*.joblib
+reports_out/
+
+# Editors / OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

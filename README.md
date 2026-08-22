@@ -1,118 +1,48 @@
-# Kestrel
+# ChainWatch — Real-Time Crypto Fraud Attribution
 
-Autonomous AI Security Persona for the  hackathon project.
+A prototype for Indian law-enforcement: ingest a victim-reported wallet, trace funds across Bitcoin / EVM / TRON, identify the nearest receiving exchange (VASP) with a confidence score, score laundering risk, and emit an LEA-ready freeze / information request.
 
-Module 1 provides the production-ready application scaffold. Module 2 adds the evaluator-facing Agent API (`POST /api/agent/init`, `GET /api/agent/feed`) with repository/service layers. LLM integration, research, scheduler, and the generation pipeline are intentionally not included yet.
+The core algorithm is a **forward BFS** from the reported address. Every counterparty is checked against the attribution store. The walk stops at the first high-confidence VASP deposit. Risk scoring, cross-chain correlation, alerts and reports decorate that result.
 
 ## Stack
 
-- Python 3.12
-- FastAPI + Uvicorn
-- SQLAlchemy 2.x (async) + SQLite (`aiosqlite`)
-- Alembic
-- Pydantic v2 + pydantic-settings
-- structlog
-- pytest + pytest-asyncio + httpx
+| Layer | Choice |
+| --- | --- |
+| API | FastAPI (Python 3.11+) |
+| Worker | Celery (optional) or inline jobs |
+| DB | Postgres in Docker, SQLite for a laptop demo |
+| Cache / queue | Redis (in-memory fallback if Redis is down) |
+| UI | React 19 + Vite + Tailwind + Cytoscape.js |
+| Data | Hybrid: live free-tier explorers, synthetic fallback |
 
-## Quick start (local)
-
-**You must run the API and the UI together.** Opening only the Vite frontend without uvicorn causes `Request failed (502)` because `/api` has nothing to proxy to.
+## Quick start (laptop, no Docker)
 
 ```bash
-# 1. Create and activate a virtual environment
+cd backend
 python -m venv .venv
+.venv\Scripts\activate          # Windows
+# source .venv/bin/activate     # macOS / Linux
+pip install -e ".[dev]"
+copy .env.example .env          # or: cp .env.example .env
+python -m scripts.seed_all
+uvicorn app.main:app --reload --port 8000
+```
 
-# Windows PowerShell
-.\.venv\Scripts\Activate.ps1
+In a second terminal:
 
-# macOS / Linux
-# source .venv/bin/activate
-
-# 2. Install dependencies
-python -m pip install -e ".[dev]"
-
-# 3. Copy environment template
-copy .env.example .env          # Windows
-# cp .env.example .env          # macOS / Linux
-
-# 4. Run database migrations (required once per DATABASE_URL)
-alembic upgrade head
-# Tip: if APP_ENV/DATABASE_URL are set in your shell from an old session,
-# unset them or use a fresh .env — a new empty SQLite file has no tables.
-
-# 5. Terminal A — API (required)
-python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
-# Startup auto-applies Alembic when the schema is missing.
-
-# 6. Terminal B — UI (optional; or use same-origin build below)
+```bash
 cd frontend
 npm install
 npm run dev
-# open http://127.0.0.1:5173  (proxies /api → :8000)
 ```
 
-Same-origin (API serves the built UI — recommended local production-style check):
+Open http://localhost:5173
 
-```bash
-cd frontend && npm run build && cd ..
-python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
-# open http://127.0.0.1:8000/
-```
+| Email | Password | Role |
+| --- | --- | --- |
+| `admin@chainwatch.gov.in` | `ChangeMe#123` | Admin |
 
-Health check:
-
-```bash
-curl http://127.0.0.1:8000/health
-curl http://127.0.0.1:8000/ready
-```
-
-Expected `/health` response:
-
-```json
-{
-  "status": "ok",
-  "service": "kestrel",
-  "db": "ok",
-  "scheduler": "running",
-  "llm": "unavailable"
-}
-```
-
-## Configuration
-
-Environment variables (see `.env.example`):
-
-| Variable | Default | Required |
-|----------|---------|----------|
-| `APP_ENV` | `development` | No |
-| `LOG_LEVEL` | `INFO` | No |
-| `PORT` | `8000` | No (platforms inject this) |
-| `HOST` | `0.0.0.0` | No |
-| `DATABASE_URL` | `sqlite+aiosqlite:///./data/kestrel.db` | No |
-| `CORS_ORIGINS` | _(empty)_ | No (required for split FE/BE) |
-| `AGENT_CYCLE_SECONDS` | `600` | No |
-| `OPENAI_API_KEY` | _(unset)_ | Yes for live generation |
-| `RESEARCH_API_KEY` | _(unset)_ | No |
-
-LLM / research keys are optional. The app must start successfully when they are absent.
-
-## Database
-
-- Async SQLAlchemy engine with SQLite WAL mode and foreign keys enabled
-- Schema managed by Alembic
-- SQLite file stored under `./data/` (created automatically)
-
-```bash
-alembic upgrade head
-alembic current
-alembic history
-```
-
-## Tests
-
-```bash
-pytest
-```
+The seed script also creates ten scripted fraud cases (investment scam, task fraud, sextortion, ransomware, phishing, darknet, bridge, mixer, peel chain, fan-out). Every case has a known ground-truth VASP so a demo works with no API keys.
 
 ## Docker
 
@@ -120,170 +50,66 @@ pytest
 docker compose up --build
 ```
 
-- API: `http://127.0.0.1:8000`
-- SQLite persisted via `./data:/data`
-- Optional `.env` is loaded when present
+- UI: http://localhost:5173
+- API docs: http://localhost:8000/docs
+- Postgres `5432`, Redis `6379`
 
-## Project layout
+Set `DATA_MODE=synthetic` if you want a guaranteed offline demo. `hybrid` (default) tries live explorers and falls back to the seed.
 
-```
-app/
-  main.py            # FastAPI app + lifespan
-  config.py          # pydantic-settings
-  logging.py         # structlog
-  api/routes/health.py
-  db/
-    base.py
-    session.py
-    models.py        # agents, posts, memory_items, topics, pipeline_runs, generation_leases
-alembic/             # migrations
-tests/               # pytest suite
-data/                # SQLite volume (gitignored db files)
-```
+## Live explorer keys (optional)
 
-## Module status
+Free-tier keys make hybrid mode useful on real addresses:
 
-| Module | Status |
-|--------|--------|
-| 1 — Scaffold | Implemented |
-| 2 — Agent API (init + feed) | Implemented |
-| 3 — Autonomous lifecycle | Implemented |
-| 4 — Research + LLM candidates | Implemented |
-| 5 — Topic funnel scoring | Implemented |
-| 6 — Self-debate engine | Implemented |
-| 7 — Persistent memory / belief graph | Implemented |
-| 8 — Persona consistency / anti-drift | Implemented |
-| 9 — Final post generation + rationale | Implemented |
-| 10 — Publishing + durable feed | Implemented |
-| 11 — Production hardening / evaluator readiness | Implemented |
-| 12 — Source diversity / story continuity / contradictions | Implemented |
-| 13 — Adaptive learning from publishing history | Implemented |
-| 14 — Post-publish evaluation / self-reflection | Implemented |
-| 15 — Controlled autonomous learning | Implemented |
-| 16 — Autonomous decision / orchestration | Implemented |
-| 17 — Observability / explainability / audit | Implemented |
-| 18 — Operator dashboard UI + production web deploy | Implemented |
-| 19 — End-to-end autonomous cycle completion | Requires live `OPENAI_API_KEY` |
-| 20 — AI-security domain focus + filtering | Implemented |
+- [Etherscan V2](https://etherscan.io/apis) — one key covers ETH / BSC / Polygon / Arbitrum / Base
+- [TronGrid](https://www.trongrid.io)
+- [Blockchair](https://blockchair.com/api) (optional, Bitcoin)
 
-### AI-security focus (Module 20)
+Put them in `backend/.env` or the compose environment.
 
-After research, Kestrel runs a deterministic **AI-Security Filter** before candidates:
-
-- Accepts only findings in: `prompt_injection`, `jailbreak`, `data_leakage`, `model_poisoning`, `ai_vulnerability`, `ai_supply_chain`
-- Rejects generic cyber (phishing, ransomware, DDoS, password attacks, etc.) unless a direct AI-security domain match exists
-- Never invents CVEs, URLs, severity, or evidence
-- If nothing remains: cycle skips with `No relevant AI-security finding discovered.`
-- Selected topics persist `topics.ai_security_domain` (nullable migration; existing rows kept)
-
-Toggle: `AI_SECURITY_FILTER_ENABLED=true` (default). Scoring includes `ai_security_relevance` (weight `SCORE_WEIGHT_AI_SECURITY=0.25`).
-
-### One complete cycle (Module 19)
-
-A full Research→…→Evaluate cycle **requires a real OpenAI key** on the API process. Without it, cycles skip at Candidates with `reason=llm_unavailable` (truthful — not faked).
-
-```powershell
-# Create .env from template, then set your key (never commit .env)
-copy .env.example .env
-# Edit .env: OPENAI_API_KEY=sk-...
-
-# Restart API so lifecycle picks up the key
-python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
-
-# In another shell — init + wait for one real published cycle
-python scripts/run_one_cycle.py --base-url http://127.0.0.1:8000 --wait-seconds 180
-```
-
-## Operator dashboard (Module 18)
+## Demo script
 
 ```bash
-# Dev UI (proxies /api to FastAPI on :8000)
-cd frontend
-npm install
-npm run dev
-
-# Or build and serve from FastAPI (same-origin)
-cd frontend && npm run build
-python scripts/start_production.py
-# open http://127.0.0.1:8000/
+cd backend
+python -m scripts.demo
+python -m scripts.demo --scenario task_fraud_tron
+python -m scripts.evaluate_traces
 ```
 
-Read-only dashboard APIs:
-- `GET /api/dashboard/agents`
-- `GET /api/dashboard/state?agentId=...`
+`scripts.demo` traces a seeded victim wallet, prints the attribution sentence, and writes a hashed investigation PDF under `backend/var/reports/`.
 
-These never trigger research, LLM, generation, or publishing.
+## What the system does
 
-## Production deployment (recommended)
+1. **Intake** — paste addresses (chain auto-detected) or import an NCRP-style CSV. A mock NCRP pusher (`POST /api/v1/integrations/ncrp/mock-push`) simulates live complaints.
+2. **Trace** — Celery or inline worker; progress over SSE (`GET /api/v1/trace/{id}/stream`).
+3. **Attribution** — four tiers: direct label, deposit-address consolidation, BTC common-input clustering, ML entity classifier.
+4. **Risk** — typology motifs (peel chain, fan-out, rapid relay, mixer, bridge, sanctions) and a 0–100 score. Sanctions force Critical.
+5. **Cross-chain** — bridge registry + time/value correlator. Inferred links are labelled as heuristic, not proven.
+6. **Reports** — PDF investigation packet, pre-filled Section 94 BNSS request, SAHYOG JSON package. Every file has a SHA-256 digest and a chain-of-custody log.
+7. **Ops UI** — case desk, live trace, Cytoscape fund-flow graph, wallet profile, alert inbox with SLA timers, VASP directory, analytics, admin (data-mode toggle + audit log).
 
-**Architecture:** Browser → FastAPI (serves `frontend/dist` + `/api`) → SQLite disk or Postgres → Modules 1–17.
-
-**Recommended host:** [Render](https://render.com) Web Service using `render.yaml` (Docker). Keeps API + UI same-origin (no CORS required).
-
-### Production start command
+## Tests
 
 ```bash
-python scripts/start_production.py
+cd backend
+pytest
 ```
 
-Equivalent:
+Unit tests cover tracing / attribution; integration tests walk intake → trace → alerts → reports.
 
-```bash
-alembic upgrade head
-python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT --proxy-headers
+## Repository layout
+
+```
+backend/app/
+  api/v1/routes/     cases, trace, wallets, attribution, alerts, vasps,
+                     reports, analytics, integrations, auth
+  chains/            evm, tron, bitcoin, synthetic, resolver
+  tracing/           BFS engine, taint, pruning, cross-chain
+  attribution/       labels, deposit heuristic, BTC cluster, classifier
+  risk/              typologies, scorer, alerts
+  reports/           PDF + SAHYOG builder
+  integrations/      NCRP webhook + mock pusher
+frontend/src/        pages, graph, api, auth
+docker-compose.yml
 ```
 
-### Required environment variables
-
-| Variable | Notes |
-|----------|--------|
-| `PORT` | Injected by Render/Railway (default `8000`) |
-| `HOST` | `0.0.0.0` |
-| `APP_ENV` | `production` |
-| `DATABASE_URL` | SQLite on persistent disk, or `postgresql+asyncpg://...` |
-| `OPENAI_API_KEY` | Required for real generation cycles |
-| `CORS_ORIGINS` | Only if frontend is on a different origin |
-| `SECRET_KEY` | Optional; do not commit secrets |
-
-### Health URLs
-
-- Liveness: `GET /health` → `{"status":"ok", ...}`
-- Readiness: `GET /ready` → `{"status":"ok","db":"ok"}` (HTTP 503 if DB down)
-
-### Docker
-
-```bash
-docker compose up --build
-```
-
-### Optional split deploy (Vercel UI + Render API)
-
-1. Deploy backend on Render with public HTTPS URL.
-2. Set `CORS_ORIGINS=https://your-frontend.vercel.app`.
-3. Build frontend with `VITE_API_BASE_URL=https://your-api.onrender.com`.
-4. Deploy `frontend/` to Vercel (`frontend/vercel.json` included).
-
-### 48-hour uptime note
-
-This session implements **48-hour production readiness**, not a literal 48-hour soak in CI. For real verification: deploy to an always-on plan, hit `/health` every 5 minutes for 48 hours (UptimeRobot / cron), and confirm no restarts.
-
-## Evaluator API (Module 2)
-
-```bash
-# Initialize agent
-curl.exe -X POST http://127.0.0.1:8000/api/agent/init ^
-  -H "Content-Type: application/json" ^
-  -d "{\"persona\":{\"name\":\"Kestrel\",\"domain\":\"AI Security\"}}"
-
-# Read feed (pure read; durable posts appear after autonomous publish cycles)
-curl.exe "http://127.0.0.1:8000/api/agent/feed?agentId=<agentId>"
-```
-
-## Evaluator smoke simulation (Module 10)
-
-With the server running and `OPENAI_API_KEY` configured:
-
-```bash
-python scripts/smoke_eval.py --base-url http://127.0.0.1:8000 --polls 18 --interval 10
-```
-
+This is a prototype. It is not a substitute for a court-ordered production system, and inferred bridge hops must be treated as leads, not evidence.

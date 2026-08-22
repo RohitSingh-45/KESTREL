@@ -1,0 +1,168 @@
+{
+  "_meta": {
+    "description": "Mixers, bridges and routers. Traversing one of these is what turns a simple trace into a laundering typology or a cross-chain hop.",
+    "note": "Sanctioned flags reflect OFAC designations; the OFAC ingestion script is the authoritative refresh path."
+  },
+  "contracts": [
+    {
+      "chain": "ethereum",
+      "address": "0x12d66f87a04a9e220743712ce6d9bb1b5616b8fc",
+      "name": "Tornado Cash 0.1 ETH Pool",
+      "protocol": "Tornado Cash",
+      "entity_type": "mixer",
+      "is_sanctioned": true
+    },
+    {
+      "chain": "ethereum",
+      "address": "0x47ce0c6ed5b0ce3d3a51fdb1c52dc66a7c3c2936",
+      "name": "Tornado Cash 1 ETH Pool",
+      "protocol": "Tornado Cash",
+      "entity_type": "mixer",
+      "is_sanctioned": true
+    },
+    {
+      "chain": "ethereum",
+      "address": "0x910cbd523d972eb0a6f4cae4618ad62622b39dbf",
+      "name": "Tornado Cash 10 ETH Pool",
+      "protocol": "Tornado Cash",
+      "entity_type": "mixer",
+      "is_sanctioned": true
+    },
+    {
+      "chain": "ethereum",
+      "address": "0xa160cdab225685da1d56aa342ad8841c3b53f291",
+      "name": "Tornado Cash 100 ETH Pool",
+      "protocol": "Tornado Cash",
+      "entity_type": "mixer",
+      "is_sanctioned": true
+    },
+    {
+      "chain": "ethereum",
+      "address": "0x722122df12d4e14e13ac3b6895a86e84145b6967",
+      "name": "Tornado Cash Proxy",
+      "protocol": "Tornado Cash",
+      "entity_type": "mixer",
+      "is_sanctioned": true
+    },
+    {
+      "chain": "ethereum",
+      "address": "0xd90e2f925da726b50c4ed8d0fb90ad053324f31b",
+      "name": "Tornado Cash 1000 DAI Pool",
+      "protocol": "Tornado Cash",
+      "entity_type": "mixer",
+      "is_sanctioned": true
+    },
+    {
+      "chain": "ethereum",
+      "address": "0x8731d54e9d02c286767d56ac03e8037c07e01e98",
+      "name": "Stargate Router",
+      "protocol": "Stargate / LayerZero",
+      "entity_type": "bridge",
+      "supported_chains": ["ethereum", "bsc", "polygon", "arbitrum", "base"],
+      "is_sanctioned": false
+    },
+    {
+      "chain": "ethereum",
+      "address": "0x3ee18b2214aff97000d974cf647e7c347e8fa585",
+      "name": "Wormhole Token Bridge",
+      "protocol": "Wormhole",
+      "entity_type": "bridge",
+      "supported_chains": ["ethereum", "bsc", "polygon", "arbitrum", "base"],
+      "is_sanctioned": false
+    },
+    {
+      "chain": "ethereum",
+      "address": "0x6b7a87899490ece95443e979ca9485cbe7e71522",
+      "name": "Multichain (Anyswap) Router V4",
+      "protocol": "Multichain",
+      "entity_type": "bridge",
+      "supported_chains": ["ethereum", "bsc", "polygon", "arbitrum"],
+      "is_sanctioned": false
+    },
+    {
+      "chain": "ethereum",
+      "address": "0x5427fefa711eff984124bfbb1ab6fbf5e3da1820",
+      "name": "Celer cBridge",
+      "protocol": "Celer",
+      "entity_type": "bridge",
+      "supported_chains": ["ethereum", "bsc", "polygon", "arbitrum", "base"],
+      "is_sanctioned": false
+    },
+    {
+      "chain": "ethereum",
+      "address": "0xd37bbe5744d730a1d98d8dc97c42f0ca46ad7146",
+      "name": "THORChain Router",
+      "protocol": "THORChain",
+      "entity_type": "bridge",
+      "supported_chains": ["ethereum", "bitcoin", "bsc"],
+      "is_sanctioned": false
+    },
+    {
+      "chain": "ethereum",
+      "address": "0x8315177ab297ba92a06054ce80a67ed4dbd7ed3a",
+      "name": "Arbitrum One Bridge",
+      "protocol": "Arbitrum",
+      "entity_type": "bridge",
+      "supported_chains": ["ethereum", "arbitrum"],
+      "is_sanctioned": false
+    },
+    {
+      "chain": "ethereum",
+      "address": "0x3154cf16ccdb4c6d922629664174b904d80f2c35",
+      "name": "Base Bridge",
+      "protocol": "Base",
+      "entity_type": "bridge",
+      "supported_chains": ["ethereum", "base"],
+      "is_sanctioned": false
+    },
+    {
+      "chain": "ethereum",
+      "address": "0x40ec5b33f54e0e8a33a975908c5ba1c14e5bbbdf",
+      "name": "Polygon PoS Bridge (ERC20 Predicate)",
+      "protocol": "Polygon",
+      "entity_type": "bridge",
+      "supported_chains": ["ethereum", "polygon"],
+      "is_sanctioned": false
+    },
+    {
+      "chain": "ethereum",
+      "address": "0x7a250d5630b4cf539739df2c5dacb4c659f2488d",
+      "name": "Uniswap V2 Router",
+      "protocol": "Uniswap",
+      "entity_type": "defi_contract",
+      "is_sanctioned": false
+    },
+    {
+      "chain": "ethereum",
+      "address": "0xe592427a0aece92de3edee1f18e0157c05861564",
+      "name": "Uniswap V3 Router",
+      "protocol": "Uniswap",
+      "entity_type": "defi_contract",
+      "is_sanctioned": false
+    },
+    {
+      "chain": "ethereum",
+      "address": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+      "name": "Tether USD (USDT)",
+      "protocol": "Tether",
+      "entity_type": "token_contract",
+      "is_sanctioned": false
+    },
+    {
+      "chain": "ethereum",
+      "address": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+      "name": "USD Coin (USDC)",
+      "protocol": "Circle",
+      "entity_type": "token_contract",
+      "is_sanctioned": false
+    },
+    {
+      "chain": "tron",
+      "address": "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t",
+      "name": "Tether USD (TRC20)",
+      "protocol": "Tether",
+      "entity_type": "token_contract",
+      "is_sanctioned": false
+    }
+  ]
+}
