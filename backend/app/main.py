@@ -38,15 +38,6 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         data_mode=settings.data_mode,
         job_backend=settings.job_backend,
     )
-    # #region agent log
-    try:
-        import json as _json, sys as _sys, time as _time
-        from pathlib import Path as _Path
-        _p = _Path(r"C:\Users\ROHIT\OneDrive\Desktop\HANUMAN\debug-41078f.log")
-        _p.open("a", encoding="utf-8").write(_json.dumps({"sessionId":"41078f","hypothesisId":"A","location":"main.py:lifespan","message":"backend_startup","data":{"cwd":str(_Path.cwd()),"python":_sys.executable,"db_url":settings.database_url.split("://",1)[0],"is_sqlite":settings.is_sqlite,"cors":settings.cors_origins,"api_prefix":settings.api_prefix},"timestamp":int(_time.time()*1000)})+"\n")
-    except Exception:
-        pass
-    # #endregion
     await init_database()
     warm_caches()
     yield
@@ -94,16 +85,6 @@ def create_app() -> FastAPI:
         response = await call_next(request)
         elapsed_ms = (time.perf_counter() - started) * 1000
         response.headers["X-Request-Duration-Ms"] = f"{elapsed_ms:.1f}"
-        # #region agent log
-        try:
-            import json as _json, time as _time
-            from pathlib import Path as _Path
-            _origin = request.headers.get("origin") or request.headers.get("referer")
-            if _origin or request.url.path.startswith("/api/"):
-                _Path(r"C:\Users\ROHIT\OneDrive\Desktop\HANUMAN\debug-41078f.log").open("a", encoding="utf-8").write(_json.dumps({"sessionId":"41078f","hypothesisId":"D","location":"main.py:timing","message":"http_request","data":{"path":request.url.path,"method":request.method,"status":response.status_code,"origin":_origin,"ua":(request.headers.get("user-agent") or "")[:80]},"timestamp":int(_time.time()*1000)})+"\n")
-        except Exception:
-            pass
-        # #endregion
         if elapsed_ms > 3000:
             logger.warning(
                 "slow_request", path=request.url.path, duration_ms=round(elapsed_ms, 1)

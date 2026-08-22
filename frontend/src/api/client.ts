@@ -39,32 +39,16 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
   const { body, query, headers, ...rest } = options
   const token = tokenStore.get()
   const isFormData = body instanceof FormData
-  const requestUrl = buildUrl(path, query)
 
-  // #region agent log
-  fetch('http://127.0.0.1:7732/ingest/2d88ebec-ca80-4b2f-90b4-63275b860989',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'41078f'},body:JSON.stringify({sessionId:'41078f',hypothesisId:'D',location:'client.ts:apiFetch',message:'request_start',data:{path,url:requestUrl,apiBase:API_BASE,method:rest.method ?? 'GET',hasToken:Boolean(token)},timestamp:Date.now()})}).catch(()=>{});
-  // #endregion
-
-  let response: Response
-  try {
-    response = await fetch(requestUrl, {
-      ...rest,
-      headers: {
-        ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        ...headers,
-      },
-      body: isFormData ? body : body !== undefined ? JSON.stringify(body) : undefined,
-    })
-  } catch (err) {
-    // #region agent log
-    fetch('http://127.0.0.1:7732/ingest/2d88ebec-ca80-4b2f-90b4-63275b860989',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'41078f'},body:JSON.stringify({sessionId:'41078f',hypothesisId:'D',location:'client.ts:apiFetch',message:'request_network_error',data:{path,url:requestUrl,error:err instanceof Error ? err.message : String(err)},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
-    throw err
-  }
-  // #region agent log
-  fetch('http://127.0.0.1:7732/ingest/2d88ebec-ca80-4b2f-90b4-63275b860989',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'41078f'},body:JSON.stringify({sessionId:'41078f',hypothesisId:'D',location:'client.ts:apiFetch',message:'request_response',data:{path,status:response.status,ok:response.ok,contentType:response.headers.get('content-type')},timestamp:Date.now()})}).catch(()=>{});
-  // #endregion
+  const response = await fetch(buildUrl(path, query), {
+    ...rest,
+    headers: {
+      ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...headers,
+    },
+    body: isFormData ? body : body !== undefined ? JSON.stringify(body) : undefined,
+  })
 
   if (response.status === 401) {
     tokenStore.clear()

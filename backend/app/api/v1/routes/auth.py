@@ -20,23 +20,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 async def _issue_token(session, request: Request, email: str, password: str) -> TokenResponse:
-    # #region agent log
-    try:
-        import json as _json, time as _time
-        from pathlib import Path as _Path
-        _Path(r"C:\Users\ROHIT\OneDrive\Desktop\HANUMAN\debug-41078f.log").open("a", encoding="utf-8").write(_json.dumps({"sessionId":"41078f","hypothesisId":"C","location":"auth.py:_issue_token","message":"login_enter","data":{"email_present":bool(email),"email_len":len(email or "")},"timestamp":int(_time.time()*1000)})+"\n")
-    except Exception:
-        pass
-    # #endregion
     user = await get_user_by_email(session, email)
-    # #region agent log
-    try:
-        import json as _json, time as _time
-        from pathlib import Path as _Path
-        _Path(r"C:\Users\ROHIT\OneDrive\Desktop\HANUMAN\debug-41078f.log").open("a", encoding="utf-8").write(_json.dumps({"sessionId":"41078f","hypothesisId":"C","location":"auth.py:_issue_token","message":"user_lookup","data":{"found":user is not None,"active":bool(user.is_active) if user else None},"timestamp":int(_time.time()*1000)})+"\n")
-    except Exception:
-        pass
-    # #endregion
     if user is None or not verify_password(password, user.hashed_password):
         # Same message either way so the endpoint cannot be used to enumerate accounts.
         raise AuthError("Incorrect email or password")
@@ -48,14 +32,6 @@ async def _issue_token(session, request: Request, email: str, password: str) -> 
     await audit_request(
         session, request, user, action="auth.login", resource_type="user", resource_id=user.id
     )
-    # #region agent log
-    try:
-        import json as _json, time as _time
-        from pathlib import Path as _Path
-        _Path(r"C:\Users\ROHIT\OneDrive\Desktop\HANUMAN\debug-41078f.log").open("a", encoding="utf-8").write(_json.dumps({"sessionId":"41078f","hypothesisId":"C","location":"auth.py:_issue_token","message":"login_success","data":{"user_id":user.id,"role":str(user.role)},"timestamp":int(_time.time()*1000)})+"\n")
-    except Exception:
-        pass
-    # #endregion
     return TokenResponse(
         access_token=token,
         expires_in=settings.access_token_ttl_minutes * 60,

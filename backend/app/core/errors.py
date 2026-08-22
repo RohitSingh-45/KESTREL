@@ -97,14 +97,6 @@ def register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(Exception)
     async def _unhandled(request: Request, exc: Exception) -> JSONResponse:
         logger.exception("unhandled_error", path=str(request.url.path), error=str(exc))
-        # #region agent log
-        try:
-            import json as _json, time as _time
-            from pathlib import Path as _Path
-            _Path(r"C:\Users\ROHIT\OneDrive\Desktop\HANUMAN\debug-41078f.log").open("a", encoding="utf-8").write(_json.dumps({"sessionId":"41078f","hypothesisId":"B","location":"errors.py:_unhandled","message":"unhandled_500","data":{"path":str(request.url.path),"error":str(exc)[:300],"err_type":type(exc).__name__},"timestamp":int(_time.time()*1000)})+"\n")
-        except Exception:
-            pass
-        # #endregion
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content=_payload("internal_error", "An unexpected error occurred"),

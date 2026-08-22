@@ -77,15 +77,7 @@ async def get_session() -> AsyncIterator[AsyncSession]:
         try:
             yield session
             await session.commit()
-        except Exception as exc:
-            # #region agent log
-            try:
-                import json as _json, time as _time
-                from pathlib import Path as _Path
-                _Path(r"C:\Users\ROHIT\OneDrive\Desktop\HANUMAN\debug-41078f.log").open("a", encoding="utf-8").write(_json.dumps({"sessionId":"41078f","hypothesisId":"B","location":"session.py:get_session","message":"session_error","data":{"error":str(exc)[:300],"err_type":type(exc).__name__},"timestamp":int(_time.time()*1000)})+"\n")
-            except Exception:
-                pass
-            # #endregion
+        except Exception:
             await session.rollback()
             raise
 
