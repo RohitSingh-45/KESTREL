@@ -264,10 +264,17 @@ export function useDownloadReport() {
   })
 }
 
-export function useAnalyticsOverview() {
+export function useAnalyticsOverview(days?: number) {
   return useQuery({
-    queryKey: queryKeys.analytics('overview'),
-    queryFn: () => api.get<AnalyticsOverview>('/analytics/overview'),
+    queryKey: queryKeys.analytics(`overview-${days ?? 'all'}`),
+    queryFn: () => api.get<AnalyticsOverview>('/analytics/overview', { days }),
+  })
+}
+
+export function useNetworkGraph(params: { limit?: number; min_taint?: number; days?: number } = {}) {
+  return useQuery({
+    queryKey: queryKeys.analytics(`network-graph-${JSON.stringify(params)}`),
+    queryFn: () => api.get<TraceGraph>('/analytics/network-graph', params),
   })
 }
 

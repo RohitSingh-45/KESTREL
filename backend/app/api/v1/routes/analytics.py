@@ -20,16 +20,20 @@ from app.api.schemas.analytics import (
     TypologyStats,
     VaspStatsOut,
 )
+from app.api.schemas.trace import GraphEdge, GraphNode, TraceGraphOut
 from app.core.enums import (
     TYPOLOGY_LABELS,
     AlertStatus,
     AttributionMethod,
     CaseStatus,
     Chain,
+    DataSource,
     JobStatus,
     Typology,
 )
 from app.db.models import Alert, Case, CaseAddress, TraceJob, TraceNode, Vasp
+from app.db.models import TraceEdge as TraceEdgeRow
+from app.tracing.models import TERMINAL_EXPLANATION
 from app.tracing.paths import read_attribution, read_risk, read_stats
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
@@ -377,3 +381,154 @@ async def chain_stats(session: SessionDep, user: CurrentUser) -> list[Bucket]:
         )
         for chain in sorted(keys, key=lambda c: counts.get(c, 0), reverse=True)
     ]
+
+
+@router.get("/network-graph", response_model=TraceGraphOut)
+async def network_graph(
+    session: SessionDep,
+    user: CurrentUser,
+    limit: int = Query(default=400, ge=10, le=2000),
+    min_taint: float = Query(default=0.02, ge=0.0, le=1.0),
+    days: int | None = Query(default=None, ge=1, le=365),
+) -> TraceGraphOut:
+    """Every completed trace in the system, merged onto one canvas.
+
+    Each case is traced in isolation, so a single-case view can never show
+    two unrelated-looking complaints converging on the same deposit address
+    - exactly the signal that turns isolated reports into a fraud ring.
+    Capped to the highest-taint addresses so the canvas stays legible.
+    """
+    query = select(TraceJob).where(TraceJob.status == JobStatus.COMPLETED)
+    if days:
+        cutoff = func.datetime("now", f"-{days} days")
+        query = query.where(TraceJob.created_at >= cutoff)
+    jobs = (await session.execute(query)).scalars().all()
+    if not jobs:
+        return TraceGraphOut(
+            job_id="",
+            chain=Chain.TRON,
+            seed_address="",
+            status=JobStatus.COMPLETED,
+            nodes=[],
+            edges=[],
+            summary={"merged_jobs": 0, "cross_case_addresses": 0},
+            data_source=DataSource.SYNTHETIC,
+        )
+
+    job_ids = [job.id for job in jobs]
+    # Only a real case id counts toward the cross-case signal - an address hit
+    # by several ad-hoc traces (no case attached) is not evidence of a ring,
+    # just the same lead re-run.
+    job_case: dict[str, str | None] = {job.id: job.case_id for job in jobs}
+
+    node_rows = (
+        await session.execute(
+            select(TraceNode).where(
+                TraceNode.job_id.in_(job_ids), TraceNode.taint >= min_taint
+            )
+        )
+    ).scalars().all()
+
+    # Keep the strongest observation of each address, and every distinct
+    # case that reached it - an address touched by more than one case is
+    # the cross-case signal this view exists to surface.
+    best: dict[str, TraceNode] = {}
+    cases_by_key: dict[str, set[str]] = defaultdict(set)
+    for row in node_rows:
+        key = f"{row.chain}:{row.address}"
+        case_id = job_case[row.job_id]
+        if case_id:
+            cases_by_key[key].add(case_id)
+        current = best.get(key)
+        if current is None or row.taint > current.taint:
+            best[key] = row
+
+    ranked = sorted(best.items(), key=lambda kv: kv[1].taint, reverse=True)[:limit]
+    best = dict(ranked)
+    present = set(best)
+    cross_case = {key for key in present if len(cases_by_key[key]) > 1}
+
+    nodes = []
+    for key, row in best.items():
+        notes = list((row.details or {}).get("notes") or [])
+        if key in cross_case:
+            notes.append(
+                f"Reached by {len(cases_by_key[key])} separate cases - "
+                "possible shared fraud infrastructure"
+            )
+        nodes.append(
+            GraphNode(
+                id=key,
+                address=row.address,
+                chain=Chain(row.chain),
+                hop=row.hop,
+                taint=row.taint,
+                entity_type=str(row.entity_type),
+                entity_name=row.entity_name,
+                vasp_slug=row.vasp_slug,
+                attribution_method=row.attribution_method,
+                attribution_confidence=row.attribution_confidence,
+                risk_score=row.risk_score,
+                risk_level=str(row.risk_level),
+                typologies=row.typologies or [],
+                value_in_usd=row.value_in_usd,
+                value_out_usd=row.value_out_usd,
+                is_seed=row.is_seed,
+                is_terminal=row.is_terminal,
+                is_sanctioned=bool((row.details or {}).get("is_sanctioned")),
+                terminal_reason=(row.details or {}).get("terminal_reason"),
+                terminal_explanation=TERMINAL_EXPLANATION.get(
+                    (row.details or {}).get("terminal_reason") or ""
+                ),
+                notes=notes,
+                first_seen=row.first_seen,
+            )
+        )
+
+    edge_rows = (
+        await session.execute(select(TraceEdgeRow).where(TraceEdgeRow.job_id.in_(job_ids)))
+    ).scalars().all()
+    seen_edges: set[str] = set()
+    edges: list[GraphEdge] = []
+    for row in edge_rows:
+        source = f"{row.chain}:{row.src_address}"
+        target = f"{row.chain}:{row.dst_address}"
+        if source not in present or target not in present:
+            continue
+        edge_key = f"{row.tx_hash}:{source}:{target}"
+        if edge_key in seen_edges:
+            continue
+        seen_edges.add(edge_key)
+        edges.append(
+            GraphEdge(
+                id=row.id,
+                source=source,
+                target=target,
+                chain=Chain(row.chain),
+                tx_hash=row.tx_hash,
+                ts=row.ts,
+                block_number=row.block_number,
+                asset=row.asset,
+                amount=str(row.amount),
+                amount_usd=row.amount_usd,
+                hop=row.hop,
+                taint_share=row.taint_share,
+                is_on_primary_path=row.is_on_primary_path,
+                edge_kind=row.edge_kind,
+            )
+        )
+
+    return TraceGraphOut(
+        job_id=job_ids[-1],
+        chain=Chain(jobs[0].chain),
+        seed_address="",
+        status=JobStatus.COMPLETED,
+        nodes=nodes,
+        edges=edges,
+        summary={
+            "merged_jobs": len(job_ids),
+            "total_addresses": len(best),
+            "cross_case_addresses": len(cross_case),
+        },
+        data_source=jobs[-1].data_source,
+    )
