@@ -18,12 +18,17 @@ import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { useAlertCount } from '@/api/hooks'
 
+// Ordered to match how an investigator actually works a day: see what needs
+// attention (Alerts) and which case it belongs to (Cases), run the trace
+// workflow (New Trace -> Fund Flow -> Wallet Lookup), then the reference and
+// output tools that come later in a case (VASP Directory -> Reports ->
+// Analytics), with Admin last since only admins see it at all.
 const NAV = [
+  { to: '/alerts', label: 'Alerts', icon: Bell, badge: 'alerts' },
   { to: '/cases', label: 'Cases', icon: FolderSearch },
   { to: '/trace', label: 'New Trace', icon: Radar },
   { to: '/graph', label: 'Fund Flow', icon: Share2 },
   { to: '/wallets', label: 'Wallet Lookup', icon: Wallet },
-  { to: '/alerts', label: 'Alerts', icon: Bell, badge: 'alerts' },
   { to: '/vasps', label: 'VASP Directory', icon: Building2 },
   { to: '/reports', label: 'Reports', icon: FileText },
   { to: '/analytics', label: 'Analytics', icon: BarChart3 },
