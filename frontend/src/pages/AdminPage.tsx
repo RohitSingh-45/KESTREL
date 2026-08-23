@@ -131,7 +131,7 @@ export function AdminPage() {
         description="One picture of how the system is currently running, and everything that has happened on it."
       />
       <PageBody className="space-y-5">
-        <div className="grid gap-3 md:grid-cols-4">
+        <div className="grid gap-3 md:grid-cols-5">
           <StatTile
             label="Data mode"
             value={status.data_mode}
@@ -156,7 +156,17 @@ export function AdminPage() {
             accent={configuredProviders < status.providers.length ? 'text-yellow-400' : undefined}
           />
           <StatTile label="Jobs" value={status.job_backend} sub={`${status.synthetic_scenarios} demo scenarios seeded`} />
+          <StatTile
+            label="Address index"
+            value={status.indexed_addresses}
+            sub={`${status.indexed_attributions} attributions on file`}
+          />
         </div>
+        <p className="-mt-2 text-xs text-[--color-ink-faint]">
+          Address index grows with every trace: once an address is profiled or attributed, later
+          investigations — even unrelated cases — read it back instead of re-deriving it from
+          scratch.
+        </p>
 
         <Card>
           <CardHeader>

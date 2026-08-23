@@ -16,7 +16,7 @@ from app.config import settings
 from app.core.cache import cache
 from app.core.errors import AuthError, ValidationError
 from app.core.runtime import DataMode, get_data_mode, set_data_mode
-from app.db.models import AddressLabel, AuditLog, Case, SyntheticGroundTruth
+from app.db.models import Address, AddressLabel, Attribution, AuditLog, Case, SyntheticGroundTruth
 from app.integrations.ncrp import NcrpComplaint, complaint_to_case, sample_complaint
 
 router = APIRouter(prefix="/integrations", tags=["integrations"])
@@ -31,6 +31,8 @@ class SystemStatus(BaseModel):
     label_sources: list[dict[str, Any]]
     synthetic_scenarios: int
     database: str
+    indexed_addresses: int
+    indexed_attributions: int
 
 
 class DataModeUpdate(BaseModel):
@@ -88,6 +90,17 @@ async def system_status(session: SessionDep, user: CurrentUser) -> SystemStatus:
     scenarios = (
         await session.execute(select(func.count()).select_from(SyntheticGroundTruth))
     ).scalar_one()
+    # The durable index behind "scalable indexing": every trace profiles
+    # addresses and persists their attribution once, so overlapping or
+    # repeat investigations read from here instead of re-deriving from
+    # scratch. This is what's actually growing across cases, not a per-
+    # trace graph that gets thrown away when the job ends.
+    indexed_addresses = (
+        await session.execute(select(func.count()).select_from(Address))
+    ).scalar_one()
+    indexed_attributions = (
+        await session.execute(select(func.count()).select_from(Attribution))
+    ).scalar_one()
     label_sources = [
         {
             "source": source,
@@ -107,6 +120,8 @@ async def system_status(session: SessionDep, user: CurrentUser) -> SystemStatus:
         label_sources=label_sources,
         synthetic_scenarios=int(scenarios),
         database=dialect,
+        indexed_addresses=int(indexed_addresses),
+        indexed_attributions=int(indexed_attributions),
     )
 
 

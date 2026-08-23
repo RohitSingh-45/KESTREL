@@ -541,6 +541,8 @@ export interface SystemStatus {
   label_sources: LabelSourceStat[]
   synthetic_scenarios: number
   database: string
+  indexed_addresses: number
+  indexed_attributions: number
 }
 
 export interface TraceTimelineStep {
