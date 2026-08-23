@@ -186,6 +186,22 @@ class Traversal:
             node.attribution = await self.attribution.identify(
                 chain, node.address, context
             )
+            # Tier 2 samples an address's full inbound history to test the
+            # deposit-consolidation pattern, which sees further back than the
+            # forward-tainted graph ever does. A dormant collection wallet's
+            # real idle period is invisible without this: the graph only
+            # contains the victim's own edge into it, not whatever it received
+            # months earlier.
+            observation = self.attribution.observation(chain, node.address)
+            if observation and observation.first_inbound:
+                if node.first_seen is None or observation.first_inbound < node.first_seen:
+                    node.first_seen = observation.first_inbound
+            # Same gap for fan-in: the forward graph only has inbound edges
+            # from senders who were themselves expanded, so a collection
+            # wallet fed by two hundred victims looks like it has one payer
+            # unless the fuller sample is folded in.
+            if observation and observation.distinct_payers > node.observed_in_degree:
+                node.observed_in_degree = observation.distinct_payers
 
     async def _expand(
         self,

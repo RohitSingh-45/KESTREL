@@ -106,6 +106,7 @@ class AttributionService:
             if fresh is not None:
                 self._cache[key] = fresh
                 self.tier_hits["index_reuse"] = self.tier_hits.get("index_reuse", 0) + 1
+                await self._ensure_observed(chain, address, key, context)
                 return fresh
 
         result = Attribution(chain=chain, address=address)
@@ -117,6 +118,10 @@ class AttributionService:
 
         if result.finalise().confidence >= SHORT_CIRCUIT_CONFIDENCE:
             self._cache[key] = result
+            # A confident label still short-circuits identification, but
+            # typology detection (fan-in, dormant-burst) needs the inbound
+            # history regardless of how sure we are who owns the address.
+            await self._ensure_observed(chain, address, key, context)
             return result
 
         outbound = context.outbound
@@ -185,6 +190,27 @@ class AttributionService:
     def observation(self, chain: Chain, address: str) -> AddressObservation | None:
         """Inbound facts gathered while attributing, or None if never sampled."""
         return self._observed.get((chain.value, normalise_address(address, chain)))
+
+    async def _ensure_observed(
+        self, chain: Chain, address: str, key: tuple[str, str], context: AttributionContext
+    ) -> None:
+        """Sample inbound history even when identification short-circuited.
+
+        A confident label or a fresh cache hit skips tiers 2-4 entirely, but
+        typology detection (fan-in aggregation, dormant-burst) needs an
+        address's real inbound picture regardless of how quickly we named it
+        - otherwise every labelled or recently-attributed address is a blind
+        spot for those patterns.
+        """
+        if key in self._observed or not context.allow_fetch:
+            return
+        inbound = context.inbound
+        if inbound is None:
+            try:
+                inbound = await self._fetch(chain, address, Direction.IN, INBOUND_SAMPLE)
+            except Exception:
+                return
+        self._observe(key, inbound, sampled=True)
 
     async def features_for(
         self, chain: Chain, address: str, inbound: list[Transfer], outbound: list[Transfer]

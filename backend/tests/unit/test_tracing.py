@@ -76,6 +76,9 @@ class FakeAttribution:
         result.add(self.mapping.get(address))
         return result.finalise()
 
+    def observation(self, chain, address):
+        return None
+
     def stats(self) -> dict:
         return {}
 

@@ -34,9 +34,13 @@ FAN_OUT_MIN_COUNTERPARTIES = 5
 FAN_IN_MIN_COUNTERPARTIES = 5
 
 RAPID_RELAY_MAX_SECONDS = 30 * 60
-RAPID_RELAY_MIN_HOPS = 2
+# A single address forwarding within minutes is already the signal: a mule
+# wallet that flips straight to a VASP deposit address is the most common
+# real shape, and it only has one address capable of exhibiting hold-then-
+# forward behaviour (the deposit address itself is terminal).
+RAPID_RELAY_MIN_HOPS = 1
 
-STRUCTURING_MIN_TRANSFERS = 4
+STRUCTURING_MIN_TRANSFERS = 3
 STRUCTURING_MAX_SPREAD = 0.15
 
 DORMANT_MIN_IDLE_DAYS = 30
@@ -240,18 +244,29 @@ def detect_rapid_relay(graph: TraceGraph) -> TypologyHit | None:
 
 
 def detect_structuring(graph: TraceGraph) -> TypologyHit | None:
-    """Value broken into several near-identical amounts to stay under thresholds."""
+    """Value broken into several near-identical amounts to stay under thresholds.
+
+    Checked per (sender, counterparty) pair, on the *individual* transfer
+    amounts rather than their sum: `_counterparty_values` collapses each
+    counterparty to one summed total, which can never show a repeated-amount
+    pattern at all. A structurer splitting across two deposit addresses (three
+    ~9.6k payments to one, two ~3k to another) has each pair's own transfers
+    near-uniform - pooling both pairs together would average away exactly the
+    signal being looked for.
+    """
     offenders: list[tuple[str, int, float]] = []
     for address in graph.nodes:
-        values = [v for v in _counterparty_values(graph, address).values() if v > 0]
-        if len(values) < STRUCTURING_MIN_TRANSFERS:
-            continue
-        mean = statistics.mean(values)
-        if mean <= 0:
-            continue
-        spread = statistics.pstdev(values) / mean
-        if spread <= STRUCTURING_MAX_SPREAD:
-            offenders.append((address, len(values), mean))
+        for edges in _out_by_counterparty(graph, address).values():
+            values = [e.amount_usd for e in edges if e.amount_usd > 0]
+            if len(values) < STRUCTURING_MIN_TRANSFERS:
+                continue
+            mean = statistics.mean(values)
+            if mean <= 0:
+                continue
+            spread = statistics.pstdev(values) / mean
+            if spread <= STRUCTURING_MAX_SPREAD:
+                offenders.append((address, len(values), mean))
+                break
 
     if not offenders:
         return None
@@ -275,12 +290,20 @@ def detect_structuring(graph: TraceGraph) -> TypologyHit | None:
 
 
 def detect_dormant_burst(graph: TraceGraph) -> TypologyHit | None:
-    """An address that sat idle for a long time and then moved everything."""
+    """An address that sat idle for a long time and then moved everything.
+
+    Uses `node.first_seen` rather than `_hold_seconds`: the forward trace
+    graph only holds the edge that carried the victim's money in, but tier 2
+    attribution samples an address's real inbound history, so `first_seen`
+    can reach back to activity months before the traced flow ever touched it
+    - exactly the idle period this typology is trying to measure.
+    """
     offenders: list[tuple[str, float]] = []
     for node in graph.nodes.values():
-        held = _hold_seconds(graph, node)
-        if held is None:
+        outbound = graph.out_edges.get(node.address) or []
+        if not outbound or node.first_seen is None:
             continue
+        held = (min(e.ts for e in outbound) - node.first_seen).total_seconds()
         idle_days = held / 86_400
         if idle_days >= DORMANT_MIN_IDLE_DAYS:
             offenders.append((node.address, idle_days))

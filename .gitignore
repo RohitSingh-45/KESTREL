@@ -31,8 +31,12 @@ dist/
 # Generated artifacts
 backend/var/
 backend/data/labels_cache/
-backend/ml/artifacts/*.joblib
 reports_out/
+
+# The trained entity classifier ships with the repo (~1.3MB) so a fresh
+# clone gets real ML-based attribution instead of falling back to rules;
+# retrain with `python -m ml.train_entity_classifier` after changing the
+# feature set or the seeded label set.
 
 # Editors / OS
 .DS_Store
