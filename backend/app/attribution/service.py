@@ -8,9 +8,9 @@ behaviour.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.attribution.btc_cluster import attribute_via_cluster
@@ -31,6 +31,10 @@ logger = get_logger(__name__)
 
 # Above this, later tiers cannot add anything worth the API calls.
 SHORT_CIRCUIT_CONFIDENCE = 0.95
+# A stored conclusion this recent needs no live re-check: the upstream HTTP
+# cache (chains/http.py) shares the same TTL, so a fresh re-run of tiers 2-4
+# would just replay cached responses and reach the same answer at API cost.
+ATTRIBUTION_FRESHNESS_SECONDS = 900
 # Sampling caps for behavioural tiers, chosen to stay inside free-tier quotas.
 INBOUND_SAMPLE = 60
 OUTBOUND_SAMPLE = 60
@@ -96,6 +100,14 @@ class AttributionService:
             return self._cache[key]
 
         context = context or AttributionContext()
+
+        if context.allow_fetch:
+            fresh = await self._load_fresh(chain, address)
+            if fresh is not None:
+                self._cache[key] = fresh
+                self.tier_hits["index_reuse"] = self.tier_hits.get("index_reuse", 0) + 1
+                return fresh
+
         result = Attribution(chain=chain, address=address)
 
         # -- tier 1: exact label match ----------------------------------
@@ -221,6 +233,25 @@ class AttributionService:
         if not slug:
             return None
         return (await self.labels.vasps()).get(slug)
+
+    async def _load_fresh(self, chain: Chain, address: str) -> Attribution | None:
+        """`load_stored`, but only when the conclusion is within the freshness
+        window - otherwise None, so the caller falls through to live tiers."""
+        address = normalise_address(address, chain)
+        newest = (
+            await self.session.execute(
+                select(func.max(AttributionRow.updated_at)).where(
+                    AttributionRow.chain == chain, AttributionRow.address == address
+                )
+            )
+        ).scalar_one_or_none()
+        if newest is None:
+            return None
+        if newest.tzinfo is None:
+            newest = newest.replace(tzinfo=UTC)
+        if datetime.now(UTC) - newest > timedelta(seconds=ATTRIBUTION_FRESHNESS_SECONDS):
+            return None
+        return await self.load_stored(chain, address)
 
     async def load_stored(self, chain: Chain, address: str) -> Attribution | None:
         """Reconstruct a previous conclusion without touching any upstream API."""

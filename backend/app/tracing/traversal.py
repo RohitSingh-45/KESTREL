@@ -19,6 +19,7 @@ nonsense.
 
 from __future__ import annotations
 
+import asyncio
 import time
 from collections.abc import Awaitable, Callable
 from datetime import datetime
@@ -46,6 +47,12 @@ logger = get_logger(__name__)
 
 ProgressHook = Callable[[dict], Awaitable[None]]
 
+# Bounds how many addresses in a hop are fetched from the upstream chain API at
+# once. Independent of the provider-level TokenBucket: that throttles request
+# *rate*, this caps in-flight concurrency so a wide fan-out hop doesn't open
+# hundreds of sockets at once.
+HOP_CONCURRENCY = 8
+
 
 class Traversal:
     def __init__(
@@ -61,6 +68,7 @@ class Traversal:
         self.params = params or TraceParams()
         self.on_progress = on_progress
         self.stats = TraceStats()
+        self._hop_semaphore = asyncio.Semaphore(HOP_CONCURRENCY)
 
     async def _emit(self, event: str, **payload) -> None:
         if self.on_progress is None:
@@ -128,8 +136,12 @@ class Traversal:
             )
 
             next_taint: dict[str, float] = {}
-            for node in expandable:
-                await self._expand(graph, node, hop, next_taint)
+
+            async def _bounded_expand(node: TraceNode) -> None:
+                async with self._hop_semaphore:
+                    await self._expand(graph, node, hop, next_taint)
+
+            await asyncio.gather(*(_bounded_expand(node) for node in expandable))
 
             self.stats.hops_completed = hop
             frontier = self._build_frontier(graph, next_taint, hop + 1)
