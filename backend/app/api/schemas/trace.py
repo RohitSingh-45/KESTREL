@@ -104,3 +104,41 @@ class TraceGraphOut(BaseModel):
     edges: list[GraphEdge]
     summary: dict[str, Any] | None = None
     data_source: DataSource = DataSource.SYNTHETIC
+
+
+class TraceTimelineStep(BaseModel):
+    """One fund movement, in the order it happened, described in plain language."""
+
+    step: int
+    hop: int
+    chain: Chain
+    from_address: str
+    from_label: str
+    to_address: str
+    to_label: str
+    asset: str
+    amount: str
+    amount_usd: float
+    tx_hash: str
+    timestamp: datetime
+    elapsed_since_previous_seconds: float | None = None
+    elapsed_since_previous_human: str | None = None
+    share_of_victim_funds_pct: float = 0.0
+    narrative: str
+
+
+class TraceTimelineOut(BaseModel):
+    job_id: str
+    chain: Chain
+    seed_address: str
+    primary_path_only: bool
+    steps: list[TraceTimelineStep]
+
+
+class TraceNodeDetailOut(BaseModel):
+    """Everything known about one address reached by a trace: its profile plus
+    every transaction (in and out) that touched it, individually."""
+
+    node: GraphNode
+    inbound: list[GraphEdge]
+    outbound: list[GraphEdge]

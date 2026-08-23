@@ -8,7 +8,7 @@ from collections.abc import AsyncIterator
 
 from fastapi import APIRouter, Query, Request, status
 from fastapi.responses import StreamingResponse
-from sqlalchemy import desc, select
+from sqlalchemy import desc, or_, select
 
 from app.api.deps import CurrentUser, SessionDep, audit_request
 from app.api.schemas.common import Page
@@ -18,7 +18,10 @@ from app.api.schemas.trace import (
     TraceAccepted,
     TraceGraphOut,
     TraceJobOut,
+    TraceNodeDetailOut,
     TraceRequest,
+    TraceTimelineOut,
+    TraceTimelineStep,
 )
 from app.chains.resolver import DataRouter, detect_active_chain, resolve
 from app.config import settings
@@ -28,6 +31,7 @@ from app.db.models import TraceEdge as TraceEdgeRow
 from app.db.models import TraceJob
 from app.db.models import TraceNode as TraceNodeRow
 from app.tracing.models import TERMINAL_EXPLANATION, TraceParams
+from app.tracing.paths import humanise_duration
 from app.tracing.progress import is_terminal, read_events
 from app.workers.runner import submit_trace
 
@@ -64,6 +68,54 @@ async def _load_job(session: SessionDep, job_id: str) -> TraceJob:
     if job is None:
         raise NotFoundError(f"Trace job {job_id} not found")
     return job
+
+
+def _node_out(row: TraceNodeRow) -> GraphNode:
+    return GraphNode(
+        id=row.address,
+        address=row.address,
+        chain=Chain(row.chain),
+        hop=row.hop,
+        taint=row.taint,
+        entity_type=str(row.entity_type),
+        entity_name=row.entity_name,
+        vasp_slug=row.vasp_slug,
+        attribution_method=row.attribution_method,
+        attribution_confidence=row.attribution_confidence,
+        risk_score=row.risk_score,
+        risk_level=str(row.risk_level),
+        typologies=row.typologies or [],
+        value_in_usd=row.value_in_usd,
+        value_out_usd=row.value_out_usd,
+        is_seed=row.is_seed,
+        is_terminal=row.is_terminal,
+        is_sanctioned=bool((row.details or {}).get("is_sanctioned")),
+        terminal_reason=(row.details or {}).get("terminal_reason"),
+        terminal_explanation=TERMINAL_EXPLANATION.get(
+            (row.details or {}).get("terminal_reason") or ""
+        ),
+        notes=(row.details or {}).get("notes") or [],
+        first_seen=row.first_seen,
+    )
+
+
+def _edge_out(row: TraceEdgeRow) -> GraphEdge:
+    return GraphEdge(
+        id=row.id,
+        source=row.src_address,
+        target=row.dst_address,
+        chain=Chain(row.chain),
+        tx_hash=row.tx_hash,
+        ts=row.ts,
+        block_number=row.block_number,
+        asset=row.asset,
+        amount=str(row.amount),
+        amount_usd=row.amount_usd,
+        hop=row.hop,
+        taint_share=row.taint_share,
+        is_on_primary_path=row.is_on_primary_path,
+        edge_kind=row.edge_kind,
+    )
 
 
 @router.post("", response_model=TraceAccepted, status_code=status.HTTP_202_ACCEPTED)
@@ -234,52 +286,9 @@ async def get_trace_graph(
     edge_rows = (await session.execute(edge_query)).scalars().all()
 
     kept = {row.address for row in node_rows}
-    nodes = [
-        GraphNode(
-            id=row.address,
-            address=row.address,
-            chain=Chain(row.chain),
-            hop=row.hop,
-            taint=row.taint,
-            entity_type=str(row.entity_type),
-            entity_name=row.entity_name,
-            vasp_slug=row.vasp_slug,
-            attribution_method=row.attribution_method,
-            attribution_confidence=row.attribution_confidence,
-            risk_score=row.risk_score,
-            risk_level=str(row.risk_level),
-            typologies=row.typologies or [],
-            value_in_usd=row.value_in_usd,
-            value_out_usd=row.value_out_usd,
-            is_seed=row.is_seed,
-            is_terminal=row.is_terminal,
-            is_sanctioned=bool((row.details or {}).get("is_sanctioned")),
-            terminal_reason=(row.details or {}).get("terminal_reason"),
-            terminal_explanation=TERMINAL_EXPLANATION.get(
-                (row.details or {}).get("terminal_reason") or ""
-            ),
-            notes=(row.details or {}).get("notes") or [],
-            first_seen=row.first_seen,
-        )
-        for row in node_rows
-    ]
+    nodes = [_node_out(row) for row in node_rows]
     edges = [
-        GraphEdge(
-            id=row.id,
-            source=row.src_address,
-            target=row.dst_address,
-            chain=Chain(row.chain),
-            tx_hash=row.tx_hash,
-            ts=row.ts,
-            block_number=row.block_number,
-            asset=row.asset,
-            amount=str(row.amount),
-            amount_usd=row.amount_usd,
-            hop=row.hop,
-            taint_share=row.taint_share,
-            is_on_primary_path=row.is_on_primary_path,
-            edge_kind=row.edge_kind,
-        )
+        _edge_out(row)
         for row in edge_rows
         if row.src_address in kept and row.dst_address in kept
     ]
@@ -293,4 +302,128 @@ async def get_trace_graph(
         edges=edges,
         summary=job.summary,
         data_source=job.data_source,
+    )
+
+
+@router.get("/{job_id}/timeline", response_model=TraceTimelineOut)
+async def get_trace_timeline(
+    job_id: str,
+    session: SessionDep,
+    user: CurrentUser,
+    primary_path_only: bool = True,
+) -> TraceTimelineOut:
+    """The trace as a plain, chronological story instead of a graph.
+
+    Built for someone reading a case file, not someone who works with
+    blockchains: one row per fund movement, in the order it happened, each
+    with the exact time, amount, counterparties and transaction id spelled
+    out in a sentence - no node-link diagram literacy required.
+    """
+    job = await _load_job(session, job_id)
+
+    node_rows = (
+        await session.execute(
+            select(TraceNodeRow).where(TraceNodeRow.job_id == job_id)
+        )
+    ).scalars().all()
+    labels = {
+        row.address: (
+            "the victim's reported wallet"
+            if row.is_seed
+            else (row.entity_name or "an unlabelled wallet")
+        )
+        for row in node_rows
+    }
+
+    edge_query = select(TraceEdgeRow).where(TraceEdgeRow.job_id == job_id)
+    if primary_path_only:
+        edge_query = edge_query.where(TraceEdgeRow.is_on_primary_path.is_(True))
+    edge_rows = sorted(
+        (await session.execute(edge_query)).scalars().all(), key=lambda row: row.ts
+    )
+
+    steps: list[TraceTimelineStep] = []
+    previous_ts = None
+    for index, row in enumerate(edge_rows, start=1):
+        elapsed = (row.ts - previous_ts).total_seconds() if previous_ts else None
+        from_label = labels.get(row.src_address, "an unlabelled wallet")
+        to_label = labels.get(row.dst_address, "an unlabelled wallet")
+        when = row.ts.strftime("%d %b %Y, %H:%M UTC")
+        gap = f", {humanise_duration(elapsed)} after the previous step" if elapsed else ""
+        steps.append(
+            TraceTimelineStep(
+                step=index,
+                hop=row.hop,
+                chain=Chain(row.chain),
+                from_address=row.src_address,
+                from_label=from_label,
+                to_address=row.dst_address,
+                to_label=to_label,
+                asset=row.asset,
+                amount=str(row.amount),
+                amount_usd=round(row.amount_usd, 2),
+                tx_hash=row.tx_hash,
+                timestamp=row.ts,
+                elapsed_since_previous_seconds=elapsed,
+                elapsed_since_previous_human=humanise_duration(elapsed),
+                share_of_victim_funds_pct=round(row.taint_share * 100, 2),
+                narrative=(
+                    f"Step {index}: {row.amount} {row.asset} "
+                    f"(about ${row.amount_usd:,.2f}) moved from {from_label} "
+                    f"({row.src_address}) to {to_label} ({row.dst_address}) on {when}{gap}. "
+                    f"Transaction ID: {row.tx_hash}."
+                ),
+            )
+        )
+        previous_ts = row.ts
+
+    return TraceTimelineOut(
+        job_id=job_id,
+        chain=Chain(job.chain),
+        seed_address=job.seed_address,
+        primary_path_only=primary_path_only,
+        steps=steps,
+    )
+
+
+@router.get("/{job_id}/nodes/{address}", response_model=TraceNodeDetailOut)
+async def get_trace_node_detail(
+    job_id: str,
+    address: str,
+    session: SessionDep,
+    user: CurrentUser,
+) -> TraceNodeDetailOut:
+    """Every detail known about one address this trace reached: its profile,
+    plus every individual transaction (in and out) that touched it."""
+    await _load_job(session, job_id)
+
+    node_row = (
+        await session.execute(
+            select(TraceNodeRow).where(
+                TraceNodeRow.job_id == job_id, TraceNodeRow.address == address
+            )
+        )
+    ).scalar_one_or_none()
+    if node_row is None:
+        raise NotFoundError(f"Address {address} was not reached by trace {job_id}")
+
+    edge_rows = (
+        await session.execute(
+            select(TraceEdgeRow).where(
+                TraceEdgeRow.job_id == job_id,
+                or_(
+                    TraceEdgeRow.src_address == address,
+                    TraceEdgeRow.dst_address == address,
+                ),
+            )
+        )
+    ).scalars().all()
+
+    inbound = sorted((r for r in edge_rows if r.dst_address == address), key=lambda r: r.ts)
+    outbound = sorted((r for r in edge_rows if r.src_address == address), key=lambda r: r.ts)
+
+    return TraceNodeDetailOut(
+        node=_node_out(node_row),
+        inbound=[_edge_out(row) for row in inbound],
+        outbound=[_edge_out(row) for row in outbound],
     )

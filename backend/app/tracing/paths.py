@@ -14,7 +14,6 @@ from app.tracing.models import (
     TERMINAL_EXPLANATION,
     TerminalReason,
     TraceGraph,
-    TraceNode,
     TracePath,
 )
 from app.tracing.traversal import seed_first_movement
@@ -254,14 +253,3 @@ def hop_annexure(path: TracePath) -> list[dict[str, Any]]:
             }
         )
     return rows
-
-
-def describe_node(graph: TraceGraph, node: TraceNode) -> dict[str, Any]:
-    """Node detail for the graph drawer, including its route from the seed."""
-    path = graph.path_to(node.address)
-    return {
-        **node.to_dict(),
-        "path": path.to_dict() if path else None,
-        "counterparties_in": len(graph.in_edges.get(node.address, [])),
-        "counterparties_out": len(graph.out_edges.get(node.address, [])),
-    }
