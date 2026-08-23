@@ -1,12 +1,22 @@
 import { Badge, RiskBadge } from '@/components/ui/badge'
 import { formatPercent, formatUsd } from '@/lib/format'
-import type { TraceJob } from '@/types'
+import type { RiskLevel, TraceJob } from '@/types'
 
 const RISK_DOT: Record<string, string> = {
   low: '🟢',
   medium: '🟡',
   high: '🟠',
   critical: '🔴',
+}
+
+// A blockchain address never proves who holds it - "HIGH RISK" earns the
+// siren, everything below it gets a calmer icon so the one status that
+// actually demands action stands out rather than every level looking alarming.
+const STATUS_LABEL: Record<RiskLevel, string> = {
+  low: 'LOW RISK',
+  medium: 'MEDIUM RISK',
+  high: 'HIGH RISK 🚨',
+  critical: 'CRITICAL RISK 🚨',
 }
 
 export function InvestigationResultCard({ job }: { job: TraceJob }) {
@@ -18,7 +28,7 @@ export function InvestigationResultCard({ job }: { job: TraceJob }) {
   const transactions = Number(stats?.transfers_examined ?? counts?.edges ?? 0)
   const traced = finding?.value_usd ?? 0
   const hops = finding?.hop ?? 0
-  const endpoint = finding?.found ? finding.entity_name ?? 'Unidentified service' : 'Not yet identified'
+  const likelyExchange = finding?.found ? finding.entity_name ?? 'an unidentified service' : null
 
   return (
     <div className="overflow-hidden rounded-xl border border-[--color-line] bg-gradient-to-br from-[--color-surface-1] to-[--color-surface-2]">
@@ -38,6 +48,12 @@ export function InvestigationResultCard({ job }: { job: TraceJob }) {
           {risk?.level && <RiskBadge level={risk.level} />}
         </div>
         <div>
+          <p className="text-[11px] uppercase tracking-wide text-[--color-ink-faint]">Status</p>
+          <p className="mt-1 text-2xl font-semibold">
+            {risk?.level ? STATUS_LABEL[risk.level] : '--'}
+          </p>
+        </div>
+        <div>
           <p className="text-[11px] uppercase tracking-wide text-[--color-ink-faint]">Transactions</p>
           <p className="mt-1 text-2xl font-semibold tabular-nums">{transactions}</p>
         </div>
@@ -50,14 +66,24 @@ export function InvestigationResultCard({ job }: { job: TraceJob }) {
           <p className="mt-1 text-2xl font-semibold tabular-nums">{hops}</p>
         </div>
         <div className="sm:col-span-2 lg:col-span-1">
-          <p className="text-[11px] uppercase tracking-wide text-[--color-ink-faint]">Endpoint</p>
-          <p className="mt-1 truncate text-lg font-semibold" title={endpoint}>
-            {endpoint}
+          <p className="text-[11px] uppercase tracking-wide text-[--color-ink-faint]">
+            {likelyExchange ? 'Likely exchange' : 'Endpoint'}
           </p>
-          {finding?.found && (
-            <Badge variant="success" className="mt-1">
-              Custodial exchange identified
-            </Badge>
+          {likelyExchange ? (
+            <>
+              <p className="mt-1 truncate text-lg font-semibold" title={likelyExchange}>
+                {likelyExchange}
+              </p>
+              <p className="text-xs text-[--color-ink-faint]">
+                A wallet address does not prove identity — this is our best read, not a
+                certainty.
+              </p>
+              <Badge variant="success" className="mt-1">
+                Custodial exchange identified
+              </Badge>
+            </>
+          ) : (
+            <p className="mt-1 text-lg font-semibold text-[--color-ink-muted]">Not yet identified</p>
           )}
         </div>
         {finding?.confidence != null && (
@@ -73,6 +99,18 @@ export function InvestigationResultCard({ job }: { job: TraceJob }) {
           </div>
         )}
       </div>
+      {risk?.reasons?.length ? (
+        <div className="border-t border-[--color-line] px-5 py-3">
+          <p className="mb-1.5 text-[11px] uppercase tracking-wide text-[--color-ink-faint]">
+            Why this risk score
+          </p>
+          <ul className="space-y-0.5 text-xs text-[--color-ink-muted]">
+            {risk.reasons.map((reason, i) => (
+              <li key={i}>• {reason}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
       {finding?.statement && (
         <div className="border-t border-[--color-line] px-5 py-3 text-sm leading-relaxed text-[--color-ink-muted]">
           {finding.statement}
