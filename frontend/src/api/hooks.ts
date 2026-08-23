@@ -21,6 +21,8 @@ import type {
   TraceAccepted,
   TraceGraph,
   TraceJob,
+  TraceNodeDetail,
+  TraceTimeline,
   TypologyStats,
   Vasp,
   VaspAnalytics,
@@ -135,6 +137,22 @@ export function useTraceGraph(jobId: string | undefined) {
     queryKey: queryKeys.graph(jobId ?? ''),
     queryFn: () => api.get<TraceGraph>(`/trace/${jobId}/graph`),
     enabled: Boolean(jobId),
+  })
+}
+
+export function useTraceTimeline(jobId: string | undefined) {
+  return useQuery({
+    queryKey: ['timeline', jobId ?? ''],
+    queryFn: () => api.get<TraceTimeline>(`/trace/${jobId}/timeline`),
+    enabled: Boolean(jobId),
+  })
+}
+
+export function useTraceNodeDetail(jobId: string | undefined, address: string | undefined) {
+  return useQuery({
+    queryKey: ['trace-node', jobId ?? '', address ?? ''],
+    queryFn: () => api.get<TraceNodeDetail>(`/trace/${jobId}/nodes/${address}`),
+    enabled: Boolean(jobId && address),
   })
 }
 

@@ -151,6 +151,7 @@ class Traversal:
                 hop=hop,
                 addresses_examined=len(graph.nodes),
                 edges=len(graph.edges),
+                transfers_examined=self.stats.transfers_examined,
                 next_frontier=len(frontier),
                 vasp_hits=len(graph.vasp_endpoints()),
             )

@@ -543,6 +543,39 @@ export interface SystemStatus {
   database: string
 }
 
+export interface TraceTimelineStep {
+  step: number
+  hop: number
+  chain: Chain
+  from_address: string
+  from_label: string
+  to_address: string
+  to_label: string
+  asset: string
+  amount: string
+  amount_usd: number
+  tx_hash: string
+  timestamp: string
+  elapsed_since_previous_seconds: number | null
+  elapsed_since_previous_human: string | null
+  share_of_victim_funds_pct: number
+  narrative: string
+}
+
+export interface TraceTimeline {
+  job_id: string
+  chain: Chain
+  seed_address: string
+  primary_path_only: boolean
+  steps: TraceTimelineStep[]
+}
+
+export interface TraceNodeDetail {
+  node: GraphNode
+  inbound: GraphEdge[]
+  outbound: GraphEdge[]
+}
+
 export interface TraceEvent {
   seq: number
   job_id: string

@@ -6,19 +6,28 @@ import { PageBody, PageHeader } from '@/components/layout/AppShell'
 import { Badge, RiskBadge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { CopyButton, ErrorBlock, LoadingBlock, ProgressBar, StatTile } from '@/components/ui/misc'
+import { CopyButton, ErrorBlock, LoadingBlock, StatTile } from '@/components/ui/misc'
+import { InvestigationResultCard } from '@/components/trace/InvestigationResultCard'
+import { NodeDetailPanel } from '@/components/trace/NodeDetailPanel'
+import { StageChecklist } from '@/components/trace/StageChecklist'
+import { TraceTimelinePanel } from '@/components/trace/TraceTimelinePanel'
 import { formatPercent, formatUsd, shortAddress, titleCase } from '@/lib/format'
 import { CHAIN_LABEL } from '@/lib/labels'
-import type { TraceEvent } from '@/types'
+import type { GraphNode, TraceEvent } from '@/types'
 
 export function TraceDetailPage() {
   const { jobId } = useParams()
   const navigate = useNavigate()
   const { data: job, isLoading, error } = useTraceJob(jobId, true)
-  const running = job?.status === 'queued' || job?.status === 'running'
+  // While `job` hasn't loaded yet, treat it as still running rather than
+  // not-running - otherwise the graph query fires immediately on first
+  // mount, before the trace has even started server-side, and caches an
+  // empty result that never gets refreshed once the trace actually finishes.
+  const running = !job || job.status === 'queued' || job.status === 'running'
   const { data: graph } = useTraceGraph(running ? undefined : jobId)
   const generate = useGenerateReport()
   const [live, setLive] = React.useState<TraceEvent | null>(null)
+  const [selectedNode, setSelectedNode] = React.useState<GraphNode | null>(null)
 
   React.useEffect(() => {
     if (!jobId || !running) return
@@ -45,8 +54,18 @@ export function TraceDetailPage() {
   const finding = job.summary?.attribution
   const risk = job.summary?.risk
   const progress = (live ?? job.progress) as Record<string, unknown>
-  const examined = Number(progress.addresses_examined ?? 0)
-  const hop = Number(progress.hop ?? 0)
+  // The terminal "completed" SSE event carries the full summary, not the
+  // hop/addresses_examined counters hop-level events do, so once the job is
+  // done those come from the final stats instead of the last progress tick.
+  const stats = job.summary?.stats
+  const examined = Number(
+    (job.status === 'completed' ? stats?.addresses_examined : undefined) ??
+      progress.addresses_examined ??
+      0,
+  )
+  const hop = Number(
+    (job.status === 'completed' ? stats?.hops_completed : undefined) ?? progress.hop ?? 0,
+  )
 
   return (
     <>
@@ -84,16 +103,18 @@ export function TraceDetailPage() {
 
         {running && (
           <Card>
-            <CardContent className="pt-5">
-              <p className="mb-2 text-xs text-[--color-ink-muted]">
-                {(progress.event as string) ?? 'queued'} · hop {hop} · {examined} addresses examined
-              </p>
-              <ProgressBar value={Math.min(95, hop * 18 + examined / 4)} />
+            <CardHeader>
+              <CardTitle>Analysing</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <StageChecklist event={live} />
             </CardContent>
           </Card>
         )}
 
         {job.error && <ErrorBlock error={job.error} />}
+
+        {job.status === 'completed' && <InvestigationResultCard job={job} />}
 
         {finding && (
           <Card>
@@ -145,11 +166,19 @@ export function TraceDetailPage() {
             <CardHeader>
               <CardTitle>Fund flow</CardTitle>
             </CardHeader>
-            <CardContent>
-              <FundFlowGraph nodes={graph.nodes} edges={graph.edges} height={420} />
+            <CardContent className="space-y-2">
+              <p className="text-xs text-[--color-ink-muted]">Click a wallet to see every transaction it was part of.</p>
+              <FundFlowGraph
+                nodes={graph.nodes}
+                edges={graph.edges}
+                height={420}
+                onSelect={setSelectedNode}
+              />
             </CardContent>
           </Card>
         )}
+
+        {job.status === 'completed' && <TraceTimelinePanel jobId={job.id} />}
 
         {!!job.summary?.cross_chain_links?.length && (
           <Card>
@@ -168,6 +197,11 @@ export function TraceDetailPage() {
           </Card>
         )}
       </PageBody>
+      <NodeDetailPanel
+        jobId={job.id}
+        address={selectedNode?.address ?? null}
+        onClose={() => setSelectedNode(null)}
+      />
     </>
   )
 }
