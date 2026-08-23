@@ -189,11 +189,17 @@ export function useAttribution(chain: string | undefined, address: string | unde
   })
 }
 
+// SLA windows are measured in hours, not seconds, so polling the inbox
+// every 20-30s bought no real freshness - it just made the badge count and
+// list reflow distractingly often. A minute is still live enough to feel
+// real without the flicker.
+const ALERTS_POLL_MS = 60_000
+
 export function useAlerts(filters: Record<string, string | number | boolean | undefined> = {}) {
   return useQuery({
     queryKey: queryKeys.alerts(filters),
     queryFn: () => api.get<Page<Alert>>('/alerts', filters),
-    refetchInterval: 20000,
+    refetchInterval: ALERTS_POLL_MS,
   })
 }
 
@@ -204,7 +210,7 @@ export function useAlertCount() {
       const counts = await api.get<AlertCounts>('/alerts/counts')
       return counts.new
     },
-    refetchInterval: 30000,
+    refetchInterval: ALERTS_POLL_MS,
   })
 }
 
@@ -212,7 +218,7 @@ export function useAlertCounts() {
   return useQuery({
     queryKey: [...queryKeys.alertCounts, 'full'],
     queryFn: () => api.get<AlertCounts>('/alerts/counts'),
-    refetchInterval: 30000,
+    refetchInterval: ALERTS_POLL_MS,
   })
 }
 
