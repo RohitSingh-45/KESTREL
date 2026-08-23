@@ -26,13 +26,13 @@ class Settings(BaseSettings):
         case_sensitive=False,
     )
 
-    app_name: str = "ChainWatch"
+    app_name: str = "TraceX"
     app_env: Literal["dev", "test", "prod"] = "dev"
     debug: bool = True
     api_prefix: str = "/api/v1"
 
     # --- storage -------------------------------------------------------
-    database_url: str = f"sqlite+aiosqlite:///{(VAR_DIR / 'chainwatch.db').as_posix()}"
+    database_url: str = f"sqlite+aiosqlite:///{(VAR_DIR / 'tracex.db').as_posix()}"
     redis_url: str = "redis://localhost:6379/0"
     # When Redis is unreachable the cache/rate-limiter degrade to in-process
     # equivalents instead of failing the request.
@@ -42,7 +42,7 @@ class Settings(BaseSettings):
     secret_key: str = "dev-insecure-change-me"
     jwt_algorithm: str = "HS256"
     access_token_ttl_minutes: int = 12 * 60
-    bootstrap_admin_email: str = "admin@chainwatch.gov.in"
+    bootstrap_admin_email: str = "admin@tracex.gov.in"
     bootstrap_admin_password: str = "ChangeMe#123"
 
     # --- data sourcing -------------------------------------------------

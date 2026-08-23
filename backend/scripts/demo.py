@@ -111,6 +111,6 @@ async def main(scenario: str | None) -> int:
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Run a scripted ChainWatch demo trace")
+    parser = argparse.ArgumentParser(description="Run a scripted TraceX demo trace")
     parser.add_argument("--scenario", default="direct_tron")
     sys.exit(asyncio.run(main(parser.parse_args().scenario)))

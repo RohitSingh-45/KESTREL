@@ -16,7 +16,7 @@ from app.core.enums import Chain
 
 # Namespaced so synthetic addresses can never collide with a real one an
 # investigator might paste in from a live complaint.
-NAMESPACE = "chainwatch-synthetic-v1"
+NAMESPACE = "chainwatch-synthetic-v1"  # fixed seed for deterministic demo data; not product branding, do not rename
 
 
 def _digest(label: str, size: int) -> bytes:

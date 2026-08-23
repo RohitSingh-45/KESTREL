@@ -45,7 +45,7 @@ class UpstreamClient:
         self.cache_ttl = cache_ttl if cache_ttl is not None else settings.upstream_cache_ttl_seconds
         self.max_retries = max_retries
         self._headers = {
-            "User-Agent": "ChainWatch/0.1 (law-enforcement prototype)",
+            "User-Agent": "TraceX/0.1 (law-enforcement prototype)",
             "Accept": "application/json",
             **(headers or {}),
         }

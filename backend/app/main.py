@@ -1,4 +1,4 @@
-"""ChainWatch API entrypoint."""
+"""TraceX API entrypoint."""
 
 from __future__ import annotations
 

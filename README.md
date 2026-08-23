@@ -1,4 +1,4 @@
-# ChainWatch — Real-Time Crypto Fraud Attribution
+# TraceX — Real-Time Crypto Fraud Attribution
 
 A prototype for Indian law-enforcement: ingest a victim-reported wallet, trace funds across Bitcoin / EVM / TRON, identify the nearest receiving exchange (VASP) with a confidence score, score laundering risk, and emit an LEA-ready freeze / information request.
 
@@ -40,7 +40,7 @@ Open http://localhost:5173
 
 | Email | Password | Role |
 | --- | --- | --- |
-| `admin@chainwatch.gov.in` | `ChangeMe#123` | Admin |
+| `admin@tracex.gov.in` | `ChangeMe#123` | Admin |
 
 The seed script also creates ten scripted fraud cases (investment scam, task fraud, sextortion, ransomware, phishing, darknet, bridge, mixer, peel chain, fan-out). Every case has a known ground-truth VASP so a demo works with no API keys.
 

@@ -1,18 +1,18 @@
-name: chainwatch
+name: tracex
 
 services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: chainwatch
-      POSTGRES_PASSWORD: chainwatch
-      POSTGRES_DB: chainwatch
+      POSTGRES_USER: tracex
+      POSTGRES_PASSWORD: tracex
+      POSTGRES_DB: tracex
     ports:
       - '5432:5432'
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U chainwatch']
+      test: ['CMD-SHELL', 'pg_isready -U tracex']
       interval: 5s
       timeout: 3s
       retries: 20
@@ -33,7 +33,7 @@ services:
       context: ./backend
     environment: &backend_env
       APP_ENV: dev
-      DATABASE_URL: postgresql+asyncpg://chainwatch:chainwatch@postgres:5432/chainwatch
+      DATABASE_URL: postgresql+asyncpg://tracex:tracex@postgres:5432/tracex
       REDIS_URL: redis://redis:6379/0
       REDIS_REQUIRED: 'true'
       JOB_BACKEND: celery

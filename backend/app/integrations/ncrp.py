@@ -110,6 +110,6 @@ def sample_complaint() -> dict[str, Any]:
         "loss_amount_inr": 425000,
         "police_station": "Cyber Crime PS",
         "state": "Delhi",
-        "description": "Pushed by the ChainWatch mock NCRP service for a live-intake demo.",
+        "description": "Pushed by the TraceX mock NCRP service for a live-intake demo.",
         "addresses": ["TGMkKG6YRdJ6Cgnt8czbtrMXAQWQcV7Whq"],
     }

@@ -34,7 +34,7 @@ def _run(coro: Coroutine[Any, Any, Any]) -> Any:
         loop.close()
 
 
-@celery_app.task(name="chainwatch.trace", bind=True, max_retries=1)
+@celery_app.task(name="tracex.trace", bind=True, max_retries=1)
 def run_trace_task(self, job_id: str) -> dict[str, Any]:  # noqa: ANN001
     logger.info("celery_trace_started", job_id=job_id, task_id=self.request.id)
     _run(run_trace_job(job_id))

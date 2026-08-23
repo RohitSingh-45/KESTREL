@@ -134,7 +134,7 @@ async def fetch_eth_labels(
         response = await client.get(
             ETH_LABELS_URL,
             params={"chainId": chain_id},
-            headers={"User-Agent": "ChainWatch/0.1 (law-enforcement prototype)"},
+            headers={"User-Agent": "TraceX/0.1 (law-enforcement prototype)"},
         )
         response.raise_for_status()
         rows = response.json()
@@ -191,7 +191,7 @@ async def fetch_ofac_sdn(timeout: float = 180.0) -> bytes:
         for url in OFAC_SDN_URLS:
             try:
                 response = await client.get(
-                    url, headers={"User-Agent": "ChainWatch/0.1 (law-enforcement prototype)"}
+                    url, headers={"User-Agent": "TraceX/0.1 (law-enforcement prototype)"}
                 )
                 response.raise_for_status()
                 return response.content

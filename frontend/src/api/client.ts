@@ -1,5 +1,5 @@
 const API_BASE = import.meta.env.VITE_API_BASE ?? '/api/v1'
-const TOKEN_KEY = 'chainwatch.token'
+const TOKEN_KEY = 'tracex.token'
 
 export class ApiError extends Error {
   constructor(
@@ -53,7 +53,7 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
   if (response.status === 401) {
     tokenStore.clear()
     // Let the auth layer react rather than hard-redirecting mid-render.
-    window.dispatchEvent(new CustomEvent('chainwatch:unauthorized'))
+    window.dispatchEvent(new CustomEvent('tracex:unauthorized'))
     throw new ApiError('Session expired, please sign in again', 401, 'unauthorized')
   }
 

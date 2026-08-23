@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pytest
 
-TEST_DB = Path(tempfile.gettempdir()) / "chainwatch_test.db"
+TEST_DB = Path(tempfile.gettempdir()) / "tracex_test.db"
 
 os.environ.setdefault("APP_ENV", "test")
 os.environ["DATABASE_URL"] = f"sqlite+aiosqlite:///{TEST_DB.as_posix()}"
@@ -82,7 +82,7 @@ async def client(seeded_database) -> AsyncIterator:
         # Trigger the lifespan-equivalent bootstrap without a second seed pass.
         response = await http.post(
             "/api/v1/auth/login",
-            json={"email": "admin@chainwatch.gov.in", "password": "TestAdmin#123"},
+            json={"email": "admin@tracex.gov.in", "password": "TestAdmin#123"},
         )
         response.raise_for_status()
         http.headers["Authorization"] = f"Bearer {response.json()['access_token']}"

@@ -45,7 +45,7 @@ export function AppShell() {
             <Activity className="h-4 w-4 text-sky-400" />
           </div>
           <div className="leading-tight">
-            <p className="text-sm font-semibold tracking-tight">ChainWatch</p>
+            <p className="text-sm font-semibold tracking-tight">TraceX</p>
             <p className="text-[10px] uppercase tracking-wider text-[--color-ink-faint]">
               Crypto Fraud Attribution
             </p>

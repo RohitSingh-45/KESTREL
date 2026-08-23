@@ -74,7 +74,7 @@ class TestReports:
         assert created.status_code == 200
         download = await client.get(f"/api/v1/reports/{created.json()['id']}/download")
         body = download.json()
-        assert body["schema"] == "chainwatch.sahyog.v1"
+        assert body["schema"] == "tracex.sahyog.v1"
         assert body["case"]["case_number"]
         assert body["request"]["instrument"]
 

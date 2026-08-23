@@ -7,7 +7,7 @@ from celery import Celery
 from app.config import settings
 
 celery_app = Celery(
-    "chainwatch",
+    "tracex",
     broker=settings.broker_url,
     backend=settings.result_backend,
     include=["app.workers.tasks"],

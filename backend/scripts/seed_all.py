@@ -40,7 +40,7 @@ async def main(reset: bool, if_empty: bool, skip_cases: bool) -> int:
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Seed the ChainWatch database")
+    parser = argparse.ArgumentParser(description="Seed the TraceX database")
     parser.add_argument("--reset", action="store_true", help="rebuild the synthetic dataset")
     parser.add_argument("--if-empty", action="store_true", help="skip when already seeded")
     parser.add_argument("--skip-cases", action="store_true", help="do not create demo cases")

@@ -25,8 +25,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   React.useEffect(() => {
     const onUnauthorized = () => setUser(null)
-    window.addEventListener('chainwatch:unauthorized', onUnauthorized)
-    return () => window.removeEventListener('chainwatch:unauthorized', onUnauthorized)
+    window.addEventListener('tracex:unauthorized', onUnauthorized)
+    return () => window.removeEventListener('tracex:unauthorized', onUnauthorized)
   }, [])
 
   React.useEffect(() => {

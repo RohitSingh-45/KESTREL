@@ -9,7 +9,7 @@ import { ErrorBlock, LoadingBlock } from '@/components/ui/misc'
 export function LoginPage() {
   const { user, loading, login } = useAuth()
   const navigate = useNavigate()
-  const [email, setEmail] = React.useState('admin@chainwatch.gov.in')
+  const [email, setEmail] = React.useState('admin@tracex.gov.in')
   const [password, setPassword] = React.useState('ChangeMe#123')
   const [error, setError] = React.useState<unknown>(null)
   const [submitting, setSubmitting] = React.useState(false)
@@ -38,7 +38,7 @@ export function LoginPage() {
           <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-sky-500/15 ring-1 ring-sky-500/30">
             <Activity className="h-5 w-5 text-sky-400" />
           </div>
-          <h1 className="text-xl font-semibold tracking-tight">ChainWatch</h1>
+          <h1 className="text-xl font-semibold tracking-tight">TraceX</h1>
           <p className="text-xs text-[--color-ink-muted]">
             Real-Time Crypto Fraud Attribution System
           </p>
