@@ -1,4 +1,6 @@
+import { Link } from 'react-router-dom'
 import { Badge, RiskBadge } from '@/components/ui/badge'
+import { CopyButton } from '@/components/ui/misc'
 import { formatPercent, formatUsd } from '@/lib/format'
 import type { RiskLevel, TraceJob } from '@/types'
 
@@ -114,6 +116,20 @@ export function InvestigationResultCard({ job }: { job: TraceJob }) {
       {finding?.statement && (
         <div className="border-t border-[--color-line] px-5 py-3 text-sm leading-relaxed text-[--color-ink-muted]">
           {finding.statement}
+        </div>
+      )}
+      {(finding?.address || job.case_id) && (
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[--color-line] px-5 py-3">
+          {finding?.address && (
+            <p className="mono text-xs text-[--color-ink-muted]">
+              {finding.address} <CopyButton value={finding.address} />
+            </p>
+          )}
+          {job.case_id && (
+            <Link className="text-xs text-sky-300 hover:underline" to={`/cases/${job.case_id}`}>
+              Open parent case
+            </Link>
+          )}
         </div>
       )}
     </div>

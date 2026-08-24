@@ -1,12 +1,11 @@
 ﻿import * as React from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { useGenerateReport, useTraceGraph, useTraceJob, traceStreamUrl } from '@/api/hooks'
 import { FundFlowGraph } from '@/components/graph/FundFlowGraph'
 import { PageBody, PageHeader } from '@/components/layout/AppShell'
-import { Badge, RiskBadge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { CopyButton, ErrorBlock, LoadingBlock, StatTile } from '@/components/ui/misc'
+import { ErrorBlock, LoadingBlock, StatTile } from '@/components/ui/misc'
 import { InvestigationResultCard } from '@/components/trace/InvestigationResultCard'
 import { NodeDetailPanel } from '@/components/trace/NodeDetailPanel'
 import { StageChecklist } from '@/components/trace/StageChecklist'
@@ -52,7 +51,6 @@ export function TraceDetailPage() {
   if (!job) return null
 
   const finding = job.summary?.attribution
-  const risk = job.summary?.risk
   const progress = (live ?? job.progress) as Record<string, unknown>
   // The terminal "completed" SSE event carries the full summary, not the
   // hop/addresses_examined counters hop-level events do, so once the job is
@@ -115,35 +113,6 @@ export function TraceDetailPage() {
         {job.error && <ErrorBlock error={job.error} />}
 
         {job.status === 'completed' && <InvestigationResultCard job={job} />}
-
-        {finding && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Attribution</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <p className="text-sm leading-relaxed">{finding.statement}</p>
-              <div className="flex flex-wrap gap-2">
-                {finding.entity_name && <Badge variant="success">{finding.entity_name}</Badge>}
-                {finding.method && <Badge>{titleCase(finding.method)}</Badge>}
-                {finding.confidence != null && (
-                  <Badge variant="brand">{formatPercent(finding.confidence)} confidence</Badge>
-                )}
-                {risk?.level && <RiskBadge level={risk.level} score={risk.score} />}
-              </div>
-              {finding.address && (
-                <p className="mono text-xs text-[--color-ink-muted]">
-                  {finding.address} <CopyButton value={finding.address} />
-                </p>
-              )}
-              {job.case_id && (
-                <Link className="text-xs text-sky-300 hover:underline" to={`/cases/${job.case_id}`}>
-                  Open parent case
-                </Link>
-              )}
-            </CardContent>
-          </Card>
-        )}
 
         {!!job.summary?.recommendations?.length && (
           <Card>
