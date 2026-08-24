@@ -16,7 +16,9 @@ const AuthContext = React.createContext<AuthState | null>(null)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = React.useState<User | null>(null)
-  const [loading, setLoading] = React.useState(true)
+  // No stored token means there's nothing to restore, so the initial value
+  // already reflects that - no need for an effect to flip it on mount.
+  const [loading, setLoading] = React.useState(() => Boolean(tokenStore.get()))
 
   const logout = React.useCallback(() => {
     tokenStore.clear()
@@ -30,10 +32,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   React.useEffect(() => {
-    if (!tokenStore.get()) {
-      setLoading(false)
-      return
-    }
+    if (!tokenStore.get()) return
     api
       .get<User>('/auth/me')
       .then(setUser)

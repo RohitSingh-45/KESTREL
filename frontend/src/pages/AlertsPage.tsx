@@ -66,7 +66,7 @@ const TYPE_ICON: Record<AlertType, LucideIcon> = {
 // A short, plain sentence for the card's main line - the technical message
 // (addresses, compliance emails) moves to a collapsed "Details" section
 // instead of competing with it for attention.
-function plainSummary(alert: Alert): string {
+export function plainSummary(alert: Alert): string {
   switch (alert.alert_type) {
     case 'sanctions_hit':
       return 'Funds passed through a sanctioned address.'
@@ -89,7 +89,7 @@ function plainSummary(alert: Alert): string {
   }
 }
 
-function slaPill(seconds: number | null, overdue: boolean): { text: string; tone: 'critical' | 'default' } {
+export function slaPill(seconds: number | null, overdue: boolean): { text: string; tone: 'critical' | 'default' } {
   if (seconds == null) return { text: 'No deadline', tone: 'default' }
   if (overdue) return { text: `Overdue by ${formatDuration(Math.abs(seconds))}`, tone: 'critical' }
   return { text: `${formatDuration(seconds)} left to respond`, tone: 'default' }

@@ -24,6 +24,11 @@ export function NewTracePage() {
   const { data: resolved } = useResolveAddress(address.trim(), true)
 
   React.useEffect(() => {
+    // Syncing UI state to a query result that arrives asynchronously - React
+    // Query v5 has no onSuccess callback on useQuery, so this is the
+    // supported way to auto-fill the chain once detection resolves, without
+    // overriding a chain the user already picked themselves.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (resolved && !chain) setChain(resolved.chain)
   }, [resolved, chain])
 
