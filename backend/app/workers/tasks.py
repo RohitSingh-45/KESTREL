@@ -25,11 +25,14 @@ def _run(coro: Coroutine[Any, Any, Any]) -> Any:
         asyncio.set_event_loop(loop)
         return loop.run_until_complete(coro)
     finally:
-        # Dispose the engine bound to this loop, or the next task on this worker
-        # inherits connections belonging to a closed loop.
+        # Dispose everything bound to this loop, or the next task on this worker
+        # inherits connections (DB, Redis) belonging to a closed loop and fails
+        # with "Future attached to a different loop".
+        from app.core.cache import cache
         from app.db.session import dispose_engine
 
         loop.run_until_complete(dispose_engine())
+        loop.run_until_complete(cache.close())
         asyncio.set_event_loop(None)
         loop.close()
 

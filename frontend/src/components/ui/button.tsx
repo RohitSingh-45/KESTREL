@@ -5,11 +5,11 @@ import { Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-400',
+  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400',
   {
     variants: {
       variant: {
-        default: 'bg-sky-500 text-slate-950 hover:bg-sky-400 font-semibold',
+        default: 'bg-blue-600 text-white hover:bg-blue-500 font-semibold',
         secondary: 'bg-[--color-surface-3] text-[--color-ink] hover:bg-[#26334d]',
         outline:
           'border border-[--color-line] bg-transparent text-[--color-ink] hover:bg-[--color-surface-2]',

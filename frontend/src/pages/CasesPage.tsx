@@ -1,6 +1,6 @@
 ﻿import * as React from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Upload } from 'lucide-react'
+import { ArrowDownWideNarrow, ArrowUpWideNarrow, Plus, Upload } from 'lucide-react'
 import { useCases, useCreateCase, useImportNcrpCsv } from '@/api/hooks'
 import { PageBody, PageHeader } from '@/components/layout/AppShell'
 import { Badge } from '@/components/ui/badge'
@@ -24,12 +24,26 @@ const CATEGORIES: FraudCategory[] = [
   'other',
 ]
 
+type LossSort = 'none' | 'desc' | 'asc'
+
 export function CasesPage() {
   const navigate = useNavigate()
   const [q, setQ] = React.useState('')
   const [status, setStatus] = React.useState('')
+  const [lossSort, setLossSort] = React.useState<LossSort>('none')
   const [open, setOpen] = React.useState(false)
   const { data, isLoading, error } = useCases({ q, status: status || undefined, limit: 50 })
+
+  const items = React.useMemo(() => {
+    if (!data) return undefined
+    if (lossSort === 'none') return data.items
+    const sorted = [...data.items].sort((a, b) => {
+      const av = a.loss_amount_inr ?? -1
+      const bv = b.loss_amount_inr ?? -1
+      return lossSort === 'desc' ? bv - av : av - bv
+    })
+    return sorted
+  }, [data, lossSort])
 
   return (
     <>
@@ -61,14 +75,23 @@ export function CasesPage() {
               </option>
             ))}
           </NativeSelect>
+          <NativeSelect
+            value={lossSort}
+            onChange={(e) => setLossSort(e.target.value as LossSort)}
+            className="w-52"
+          >
+            <option value="none">Sort by loss</option>
+            <option value="desc">Loss: highest first</option>
+            <option value="asc">Loss: lowest first</option>
+          </NativeSelect>
         </div>
 
         {isLoading && <LoadingBlock label="Loading cases" />}
         {error && <ErrorBlock error={error} />}
-        {data && data.items.length === 0 && (
+        {items && items.length === 0 && (
           <EmptyState title="No cases yet" description="Create a case or import an NCRP CSV." />
         )}
-        {data && data.items.length > 0 && (
+        {items && items.length > 0 && (
           <div className="panel overflow-hidden">
             <Table>
               <THead>
@@ -77,14 +100,26 @@ export function CasesPage() {
                   <TH>Category</TH>
                   <TH>Status</TH>
                   <TH>Priority</TH>
-                  <TH>Loss</TH>
+                  <TH>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setLossSort((prev) => (prev === 'desc' ? 'asc' : 'desc'))
+                      }
+                      className="inline-flex items-center gap-1 hover:text-[--color-ink]"
+                    >
+                      Loss
+                      {lossSort === 'desc' && <ArrowDownWideNarrow className="h-3 w-3" />}
+                      {lossSort === 'asc' && <ArrowUpWideNarrow className="h-3 w-3" />}
+                    </button>
+                  </TH>
                   <TH>VASP</TH>
                   <TH>Risk</TH>
                   <TH>Opened</TH>
                 </TR>
               </THead>
               <TBody>
-                {data.items.map((row) => (
+                {items.map((row) => (
                   <TR key={row.id} clickable onClick={() => navigate(`/cases/${row.id}`)}>
                     <TD>
                       <p className="font-medium">{row.case_number}</p>

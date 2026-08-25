@@ -1,19 +1,22 @@
 import * as React from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import {
-  Activity,
   BarChart3,
   Bell,
   Building2,
   FileText,
   FolderSearch,
+  Landmark,
   LogOut,
+  Moon,
   Radar,
   Settings,
   Share2,
+  Sun,
   Wallet,
 } from 'lucide-react'
 import { useAuth } from '@/auth/AuthContext'
+import { useTheme } from '@/theme/ThemeContext'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { useAlertCount } from '@/api/hooks'
@@ -39,20 +42,25 @@ export function AppShell() {
   const { user, logout, hasRole } = useAuth()
   const navigate = useNavigate()
   const { data: openAlerts } = useAlertCount()
+  const { theme, toggleTheme } = useTheme()
 
   const items = NAV.filter((item) => !item.minRole || hasRole(item.minRole))
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-full flex-col">
+      <div className="flex shrink-0 items-center justify-center gap-2 border-b border-amber-500/20 bg-amber-500/[0.06] px-4 py-1 text-[10px] font-medium uppercase tracking-[0.2em] text-amber-300/80">
+        Restricted &middot; For Official Use Only &middot; Session Logged
+      </div>
+      <div className="flex flex-1 overflow-hidden">
       <aside className="flex w-60 shrink-0 flex-col border-r border-[--color-line] bg-[--color-surface-1]">
         <div className="flex items-center gap-2.5 border-b border-[--color-line] px-4 py-4">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-500/15 ring-1 ring-sky-500/30">
-            <Activity className="h-4 w-4 text-sky-400" />
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/15 ring-1 ring-blue-500/30">
+            <Landmark className="h-4 w-4 text-blue-400" />
           </div>
           <div className="leading-tight">
             <p className="text-sm font-semibold tracking-tight">TraceX</p>
             <p className="text-[10px] uppercase tracking-wider text-[--color-ink-faint]">
-              Crypto Fraud Attribution
+              I4C &middot; Ministry of Home Affairs
             </p>
           </div>
         </div>
@@ -66,7 +74,7 @@ export function AppShell() {
                 cn(
                   'flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors',
                   isActive
-                    ? 'bg-sky-500/12 font-medium text-sky-300'
+                    ? 'bg-blue-500/12 font-medium text-blue-300'
                     : 'text-[--color-ink-muted] hover:bg-[--color-surface-2] hover:text-[--color-ink]',
                 )
               }
@@ -86,7 +94,21 @@ export function AppShell() {
             <p className="truncate text-[11px] text-[--color-ink-faint]">
               {user?.agency ?? 'Unassigned'} - {user?.role}
             </p>
+            <p className="mono truncate text-[10px] text-[--color-ink-faint]">
+              Badge {user?.badge_number ?? '—'}
+            </p>
           </div>
+          <button
+            onClick={toggleTheme}
+            className="mb-1 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-[--color-ink-muted] transition-colors hover:bg-[--color-surface-2] hover:text-[--color-ink]"
+          >
+            {theme === 'dark' ? (
+              <Sun className="h-3.5 w-3.5" />
+            ) : (
+              <Moon className="h-3.5 w-3.5" />
+            )}
+            {theme === 'dark' ? 'Light theme' : 'Dark theme'}
+          </button>
           <button
             onClick={() => {
               logout()
@@ -103,6 +125,7 @@ export function AppShell() {
       <main className="flex-1 overflow-y-auto">
         <Outlet />
       </main>
+      </div>
     </div>
   )
 }

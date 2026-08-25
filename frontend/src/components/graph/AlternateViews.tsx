@@ -49,7 +49,7 @@ export function TimelineView({ edges }: { edges: GraphEdge[] }) {
       </THead>
       <TBody>
         {rows.map((edge) => (
-          <TR key={edge.id} className={edge.is_on_primary_path ? 'bg-sky-500/5' : undefined}>
+          <TR key={edge.id} className={edge.is_on_primary_path ? 'bg-blue-500/5' : undefined}>
             <TD className="whitespace-nowrap text-xs">{formatDateTime(edge.ts)}</TD>
             <TD>{edge.hop}</TD>
             <TD className="mono text-xs">{shortAddress(edge.source)}</TD>

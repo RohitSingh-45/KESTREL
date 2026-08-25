@@ -2,7 +2,7 @@ import * as React from 'react'
 import { cn } from '@/lib/utils'
 
 const baseField =
-  'w-full rounded-lg border border-[--color-line] bg-[--color-surface-2] px-3 py-2 text-sm text-[--color-ink] placeholder:text-[--color-ink-faint] transition-colors focus:border-sky-500 focus:outline-none disabled:opacity-60'
+  'w-full rounded-lg border border-[--color-line] bg-[--color-surface-2] px-3 py-2 text-sm text-[--color-ink] placeholder:text-[--color-ink-faint] transition-colors focus:border-blue-500 focus:outline-none disabled:opacity-60'
 
 export const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(
   ({ className, ...props }, ref) => (

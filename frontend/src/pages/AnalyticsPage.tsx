@@ -189,7 +189,7 @@ export function AnalyticsPage() {
                 <button
                   key={row.key}
                   onClick={() => row.extra?.case_id && navigate(`/cases/${row.extra.case_id}`)}
-                  className="flex w-full items-center justify-between gap-3 rounded-lg border border-[--color-line] px-3 py-2 text-left text-xs transition-colors hover:border-sky-500/40 hover:bg-[--color-surface-2]"
+                  className="flex w-full items-center justify-between gap-3 rounded-lg border border-[--color-line] px-3 py-2 text-left text-xs transition-colors hover:border-blue-500/40 hover:bg-[--color-surface-2]"
                 >
                   <span className="flex items-center gap-2">
                     <Badge variant="success">{row.label}</Badge>

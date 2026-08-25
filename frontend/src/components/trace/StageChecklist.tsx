@@ -78,7 +78,7 @@ export function StageChecklist({ event }: { event: TraceEvent | null }) {
               className={cn(
                 'flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[10px]',
                 status === 'done' && 'border-emerald-500/50 bg-emerald-500/15 text-emerald-300',
-                status === 'active' && 'border-sky-500/50 bg-sky-500/15 text-sky-300',
+                status === 'active' && 'border-blue-500/50 bg-blue-500/15 text-blue-300',
                 status === 'pending' && 'border-[--color-line] bg-[--color-surface-2] text-[--color-ink-faint]',
               )}
             >

@@ -23,7 +23,7 @@ export function TraceTimelinePanel({ jobId }: { jobId: string | undefined }) {
       </CardHeader>
       <CardContent className="space-y-4">
         {totalElapsed > 0 && (
-          <p className="rounded-lg border border-sky-500/30 bg-sky-500/10 px-3 py-2 text-sm text-sky-200">
+          <p className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-sm text-blue-200">
             Funds reached {last.to_label} in {formatDuration(totalElapsed)} after the victim's first
             payment.
           </p>
@@ -34,7 +34,7 @@ export function TraceTimelinePanel({ jobId }: { jobId: string | undefined }) {
               {index < data.steps.length - 1 && (
                 <span className="absolute left-[7px] top-3 h-full w-px bg-[--color-line]" />
               )}
-              <span className="absolute left-0 top-1 h-3.5 w-3.5 rounded-full border-2 border-sky-400 bg-[--color-surface-1]" />
+              <span className="absolute left-0 top-1 h-3.5 w-3.5 rounded-full border-2 border-blue-400 bg-[--color-surface-1]" />
               <div className="mono text-xs text-[--color-ink-faint]">
                 {new Date(step.timestamp).toLocaleTimeString('en-IN', { hour12: false })}
                 {step.elapsed_since_previous_human && (

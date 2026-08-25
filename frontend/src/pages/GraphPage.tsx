@@ -91,7 +91,7 @@ export function GraphPage() {
               </p>
             )}
             <button
-              className="text-xs text-sky-300 hover:underline"
+              className="text-xs text-blue-300 hover:underline"
               onClick={() => navigate(`/wallets/${node.chain}/${node.address}`)}
             >
               Open wallet profile

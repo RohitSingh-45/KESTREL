@@ -126,7 +126,7 @@ export function InvestigationResultCard({ job }: { job: TraceJob }) {
             </p>
           )}
           {job.case_id && (
-            <Link className="text-xs text-sky-300 hover:underline" to={`/cases/${job.case_id}`}>
+            <Link className="text-xs text-blue-300 hover:underline" to={`/cases/${job.case_id}`}>
               Open parent case
             </Link>
           )}

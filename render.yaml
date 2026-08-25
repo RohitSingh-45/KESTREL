@@ -1,0 +1,37 @@
+databases:
+  - name: tracex-db
+    databaseName: tracex
+    plan: free
+
+services:
+  - type: web
+    name: tracex-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: tracex-db
+          property: connectionString
+      - key: JOB_BACKEND
+        value: inline
+      - key: REDIS_REQUIRED
+        value: "false"
+      - key: DATA_MODE
+        value: hybrid
+      - key: SECRET_KEY
+        generateValue: true
+      - key: CORS_ORIGINS
+        value: http://localhost:5173
+      - key: ETHERSCAN_API_KEY
+        value: ""
+      - key: TRONGRID_API_KEY
+        value: ""
+      - key: BLOCKCHAIR_API_KEY
+        value: ""
+    preDeployCommand: python -m scripts.seed_all --if-empty

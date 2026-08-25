@@ -130,7 +130,7 @@ export function CaseDetailPage() {
                       </TD>
                       <TD>
                         {row.last_job_id ? (
-                          <Link className="text-sky-300 hover:underline" to={`/trace/${row.last_job_id}`}>
+                          <Link className="text-blue-300 hover:underline" to={`/trace/${row.last_job_id}`}>
                             {row.last_job_status}
                           </Link>
                         ) : (

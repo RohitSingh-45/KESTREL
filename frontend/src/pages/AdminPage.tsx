@@ -7,19 +7,28 @@ import {
   Shuffle,
   Sliders,
   Tags,
+  UserPlus,
   Users,
   type LucideIcon,
 } from 'lucide-react'
-import { useAuditLog, useMockNcrpPush, useSetDataMode, useSystemStatus } from '@/api/hooks'
+import {
+  useAuditLog,
+  useCreateUser,
+  useMockNcrpPush,
+  useSetDataMode,
+  useSystemStatus,
+  useUsers,
+} from '@/api/hooks'
 import { useAuth } from '@/auth/AuthContext'
 import { PageBody, PageHeader } from '@/components/layout/AppShell'
 import { Badge, type BadgeProps } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input, NativeSelect } from '@/components/ui/input'
+import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { Field, Input, NativeSelect } from '@/components/ui/input'
 import { EmptyState, ErrorBlock, LoadingBlock, StatTile } from '@/components/ui/misc'
 import { Table, TBody, TD, TH, THead, TR } from '@/components/ui/table'
-import { formatDateTime, timeAgo } from '@/lib/format'
+import { formatDateTime, timeAgo, titleCase } from '@/lib/format'
 import type { AuditEntry, DataMode } from '@/types'
 
 // Every action string the backend actually writes, mapped to a plain
@@ -105,10 +114,12 @@ export function AdminPage() {
   const [search, setSearch] = React.useState('')
   const [category, setCategory] = React.useState<Category | ''>('')
   const [visible, setVisible] = React.useState(40)
+  const [addOfficerOpen, setAddOfficerOpen] = React.useState(false)
   const { data: audit } = useAuditLog({
     q: search || undefined,
     limit: visible,
   })
+  const { data: users } = useUsers()
   const setMode = useSetDataMode()
   const mockPush = useMockNcrpPush()
 
@@ -187,6 +198,58 @@ export function AdminPage() {
             </Button>
             {mockPush.data && (
               <span className="text-xs text-emerald-300">Created {mockPush.data.case_number}</span>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle>Officers</CardTitle>
+            <Button size="sm" onClick={() => setAddOfficerOpen(true)}>
+              <UserPlus className="h-3.5 w-3.5" />
+              Add officer
+            </Button>
+          </CardHeader>
+          <CardContent>
+            {!users?.length ? (
+              <p className="py-4 text-center text-sm text-[--color-ink-faint]">No accounts yet.</p>
+            ) : (
+              <Table>
+                <THead>
+                  <TR>
+                    <TH>Name</TH>
+                    <TH>Email</TH>
+                    <TH>Role</TH>
+                    <TH>Agency</TH>
+                    <TH>Badge</TH>
+                    <TH>Status</TH>
+                    <TH>Last login</TH>
+                  </TR>
+                </THead>
+                <TBody>
+                  {users.map((u) => (
+                    <TR key={u.id}>
+                      <TD>{u.full_name}</TD>
+                      <TD className="mono text-xs">{u.email}</TD>
+                      <TD>
+                        <Badge variant={u.role === 'admin' ? 'critical' : u.role === 'supervisor' ? 'brand' : 'default'}>
+                          {titleCase(u.role)}
+                        </Badge>
+                      </TD>
+                      <TD className="text-xs">{u.agency ?? '—'}</TD>
+                      <TD className="mono text-xs">{u.badge_number ?? '—'}</TD>
+                      <TD>
+                        <Badge variant={u.is_active ? 'success' : 'default'}>
+                          {u.is_active ? 'Active' : 'Disabled'}
+                        </Badge>
+                      </TD>
+                      <TD className="text-xs text-[--color-ink-faint]">
+                        {u.last_login_at ? timeAgo(u.last_login_at) : 'Never'}
+                      </TD>
+                    </TR>
+                  ))}
+                </TBody>
+              </Table>
             )}
           </CardContent>
         </Card>
@@ -293,6 +356,102 @@ export function AdminPage() {
           </CardContent>
         </Card>
       </PageBody>
+      <AddOfficerDialog open={addOfficerOpen} onOpenChange={setAddOfficerOpen} />
     </>
+  )
+}
+
+function AddOfficerDialog({
+  open,
+  onOpenChange,
+}: {
+  open: boolean
+  onOpenChange: (v: boolean) => void
+}) {
+  const create = useCreateUser()
+  const [email, setEmail] = React.useState('')
+  const [fullName, setFullName] = React.useState('')
+  const [password, setPassword] = React.useState('')
+  const [role, setRole] = React.useState<'investigator' | 'supervisor' | 'admin'>('investigator')
+  const [agency, setAgency] = React.useState('')
+  const [badgeNumber, setBadgeNumber] = React.useState('')
+
+  async function onSubmit(event: React.FormEvent) {
+    event.preventDefault()
+    await create.mutateAsync({
+      email,
+      full_name: fullName,
+      password,
+      role,
+      agency: agency || null,
+      badge_number: badgeNumber || null,
+    })
+    setEmail('')
+    setFullName('')
+    setPassword('')
+    setRole('investigator')
+    setAgency('')
+    setBadgeNumber('')
+    onOpenChange(false)
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent
+        title="Add an officer"
+        description="Creates a login for an investigator, supervisor or admin. Accounts are provisioned by an admin, not self-registered."
+      >
+        <form onSubmit={onSubmit} className="space-y-3">
+          <Field label="Full name">
+            <Input value={fullName} onChange={(e) => setFullName(e.target.value)} required />
+          </Field>
+          <Field label="Official email">
+            <Input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="off"
+              required
+            />
+          </Field>
+          <Field label="Temporary password" hint="At least 8 characters. Share it out of band.">
+            <Input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="new-password"
+              minLength={8}
+              required
+            />
+          </Field>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Role">
+              <NativeSelect
+                value={role}
+                onChange={(e) => setRole(e.target.value as typeof role)}
+              >
+                <option value="investigator">Investigator</option>
+                <option value="supervisor">Supervisor</option>
+                <option value="admin">Admin</option>
+              </NativeSelect>
+            </Field>
+            <Field label="Agency">
+              <Input value={agency} onChange={(e) => setAgency(e.target.value)} placeholder="I4C" />
+            </Field>
+          </div>
+          <Field label="Badge number">
+            <Input value={badgeNumber} onChange={(e) => setBadgeNumber(e.target.value)} />
+          </Field>
+
+          {create.error && <ErrorBlock error={create.error} />}
+
+          <div className="flex justify-end pt-1">
+            <Button type="submit" loading={create.isPending}>
+              Create account
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
   )
 }

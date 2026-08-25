@@ -61,6 +61,14 @@ services:
       context: ./backend
     environment: *backend_env
     command: celery -A app.workers.celery_app.celery_app worker --loglevel=info --pool=solo
+    healthcheck:
+      # The image's baked-in HEALTHCHECK curls the API port, which nothing
+      # listens on here — this container runs Celery, not uvicorn.
+      test: ['CMD', 'celery', '-A', 'app.workers.celery_app.celery_app', 'inspect', 'ping']
+      interval: 20s
+      timeout: 10s
+      start_period: 25s
+      retries: 5
     volumes:
       - reportdata:/app/var
     depends_on:

@@ -8,7 +8,7 @@ export const badgeVariants = cva(
     variants: {
       variant: {
         default: 'border-[--color-line] bg-[--color-surface-2] text-[--color-ink-muted]',
-        brand: 'border-sky-500/40 bg-sky-500/10 text-sky-300',
+        brand: 'border-blue-500/40 bg-blue-500/10 text-blue-300',
         low: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300',
         medium: 'border-yellow-500/40 bg-yellow-500/10 text-yellow-300',
         high: 'border-orange-500/40 bg-orange-500/10 text-orange-300',

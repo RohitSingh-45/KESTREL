@@ -24,6 +24,7 @@ import type {
   TraceNodeDetail,
   TraceTimeline,
   TypologyStats,
+  User,
   Vasp,
   VaspAnalytics,
   WalletProfile,
@@ -45,6 +46,7 @@ export const queryKeys = {
   analytics: (kind: string) => ['analytics', kind] as const,
   audit: (filters?: unknown) => ['audit', filters] as const,
   system: ['system', 'status'] as const,
+  users: ['users'] as const,
 }
 
 export function useCases(filters: Record<string, string | number | undefined> = {}) {
@@ -340,6 +342,28 @@ export function useMockNcrpPush() {
   return useMutation({
     mutationFn: () => api.post<{ created: boolean; case_id: string; case_number: string }>('/integrations/ncrp/mock-push', {}),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['cases'] }),
+  })
+}
+
+export function useUsers() {
+  return useQuery({
+    queryKey: queryKeys.users,
+    queryFn: () => api.get<User[]>('/auth/users'),
+  })
+}
+
+export function useCreateUser() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (payload: {
+      email: string
+      full_name: string
+      password: string
+      role: string
+      agency?: string | null
+      badge_number?: string | null
+    }) => api.post<User>('/auth/users', payload),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.users }),
   })
 }
 

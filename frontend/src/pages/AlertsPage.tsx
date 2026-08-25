@@ -120,7 +120,7 @@ function AlertCard({
         </div>
         <p className="text-sm text-[--color-ink-muted]">{plainSummary(alert)}</p>
         {alert.recommended_action && (
-          <p className="text-xs text-sky-200/80">→ {alert.recommended_action}</p>
+          <p className="text-xs text-blue-200/80">→ {alert.recommended_action}</p>
         )}
         <details className="group">
           <summary className="cursor-pointer text-[11px] text-[--color-ink-faint] hover:text-[--color-ink-muted]">
@@ -187,7 +187,7 @@ export function AlertsPage() {
       <PageBody className="space-y-5">
         {counts && (
           <div className="grid gap-3 md:grid-cols-4">
-            <StatTile label="New" value={counts.new} accent="text-sky-300" />
+            <StatTile label="New" value={counts.new} accent="text-blue-300" />
             <StatTile label="Overdue" value={counts.overdue} accent="text-red-400" />
             <StatTile label="Critical" value={counts.critical} accent="text-red-400" />
             <StatTile label="Actioned" value={counts.actioned} />

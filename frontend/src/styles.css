@@ -1,17 +1,18 @@
 @import 'tailwindcss';
 
 @theme {
-  --color-surface-0: #070b14;
-  --color-surface-1: #0c1322;
-  --color-surface-2: #131c2e;
-  --color-surface-3: #1c273d;
-  --color-line: #22304a;
-  --color-ink: #e6edf7;
-  --color-ink-muted: #93a3bd;
-  --color-ink-faint: #64748b;
+  --color-surface-0: #0b101c;
+  --color-surface-1: #121828;
+  --color-surface-2: #1a2236;
+  --color-surface-3: #242e46;
+  --color-line: #2c3752;
+  --color-ink: #eef1f7;
+  --color-ink-muted: #8f9cb8;
+  --color-ink-faint: #5f6c88;
 
-  --color-brand: #38bdf8;
-  --color-brand-strong: #0ea5e9;
+  --color-brand: #3b82f6;
+  --color-brand-strong: #1d4ed8;
+  --color-accent-gold: #c9a227;
 
   --color-risk-low: #22c55e;
   --color-risk-medium: #eab308;
@@ -29,6 +30,36 @@
 }
 
 @layer base {
+  :root[data-theme='light'] {
+    --color-surface-0: #f3f5fa;
+    --color-surface-1: #ffffff;
+    --color-surface-2: #eef1f7;
+    --color-surface-3: #e1e6f0;
+    --color-line: #d7dde8;
+    --color-ink: #10182a;
+    --color-ink-muted: #47536b;
+    --color-ink-faint: #74809b;
+
+    /* Component classes lean on the 200-400 Tailwind shades assuming a dark
+       backdrop (light text on a faint tint). Re-anchor those specific shades
+       to darker equivalents so the same badge/alert markup stays legible on
+       a light background without touching every call site. */
+    --color-amber-300: #92400e;
+    --color-blue-200: #1e40af;
+    --color-blue-300: #1d4ed8;
+    --color-blue-400: #2563eb;
+    --color-emerald-300: #047857;
+    --color-emerald-400: #059669;
+    --color-orange-200: #9a3412;
+    --color-orange-300: #c2410c;
+    --color-orange-400: #ea580c;
+    --color-red-300: #b91c1c;
+    --color-red-400: #dc2626;
+    --color-violet-300: #6d28d9;
+    --color-yellow-300: #a16207;
+    --color-yellow-400: #ca8a04;
+  }
+
   * {
     border-color: var(--color-line);
   }
@@ -58,7 +89,7 @@
     border-radius: 6px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: #2c3b57;
+    background: #34405d;
   }
 
   :focus-visible {
@@ -81,8 +112,8 @@
 
   .grid-bg {
     background-image:
-      linear-gradient(rgba(56, 189, 248, 0.04) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(56, 189, 248, 0.04) 1px, transparent 1px);
+      linear-gradient(rgba(59, 130, 246, 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(59, 130, 246, 0.05) 1px, transparent 1px);
     background-size: 32px 32px;
   }
 
